@@ -121,29 +121,6 @@ export default function HomePage() {
           </Card>
         </div>
       </section>
-
-      {/* CTA Section */}
-      <section className="container mx-auto px-4 py-16">
-        <Card className="bg-gradient-to-r from-blue-600 to-green-600 border-0 rounded-3xl">
-          <CardContent className="p-12 text-center text-white">
-            <h2 className="text-3xl font-bold mb-4">
-              Ready to Check Your Risk?
-            </h2>
-            <p className="text-blue-100 mb-8 max-w-2xl mx-auto">
-              Take the first step towards better health. Our assessment is
-              quick, free, and provides valuable insights.
-            </p>
-            <Link href="/assessment">
-              <Button
-                size="lg"
-                className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-4 text-lg rounded-xl shadow-lg"
-              >
-                Start Your Assessment Now
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </section>
     </div>
   );
 }

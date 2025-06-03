@@ -1,7 +1,12 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import Navbar from "@/components/navbar"
-import Footer from "@/components/footer"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import Navbar from "@/components/navbar";
+import Footer from "@/components/footer";
 
 export default function FAQPage() {
   const faqs = [
@@ -55,7 +60,7 @@ export default function FAQPage() {
       answer:
         "No, Diabeat is not a medical device and does not provide medical diagnoses. It's an educational and informational tool designed to help you understand potential risk factors. Always consult healthcare professionals for medical advice and diagnosis.",
     },
-  ]
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
@@ -65,25 +70,36 @@ export default function FAQPage() {
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">Frequently Asked Questions</h1>
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">
+              Frequently Asked Questions
+            </h1>
             <p className="text-xl text-gray-600">
-              Find answers to common questions about Diabeat and diabetes risk assessment.
+              Find answers to common questions about Diabeat and diabetes risk
+              assessment.
             </p>
           </div>
 
           {/* FAQ Accordion */}
           <Card className="border-0 shadow-lg rounded-2xl">
             <CardHeader>
-              <CardTitle className="text-2xl text-gray-900">Common Questions</CardTitle>
+              <CardTitle className="text-2xl text-gray-900">
+                Common Questions
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <Accordion type="single" collapsible className="space-y-4">
                 {faqs.map((faq, index) => (
-                  <AccordionItem key={index} value={`item-${index}`} className="border border-gray-200 rounded-lg px-4">
+                  <AccordionItem
+                    key={index}
+                    value={`item-${index}`}
+                    className="border border-gray-200 rounded-lg px-4"
+                  >
                     <AccordionTrigger className="text-left font-medium text-gray-900 hover:text-blue-600">
                       {faq.question}
                     </AccordionTrigger>
-                    <AccordionContent className="text-gray-700 leading-relaxed">{faq.answer}</AccordionContent>
+                    <AccordionContent className="text-gray-700 leading-relaxed">
+                      {faq.answer}
+                    </AccordionContent>
                   </AccordionItem>
                 ))}
               </Accordion>
@@ -93,9 +109,12 @@ export default function FAQPage() {
           {/* Contact Section */}
           <Card className="border-0 shadow-lg rounded-2xl mt-8 bg-blue-50">
             <CardContent className="p-8 text-center">
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">Still Have Questions?</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">
+                Still Have Questions?
+              </h3>
               <p className="text-gray-600 mb-6">
-                If you couldn't find the answer you're looking for, feel free to reach out to our support team.
+                If you couldn't find the answer you're looking for, feel free to
+                reach out to our support team.
               </p>
               <div className="space-y-2">
                 <p className="text-gray-700">
@@ -109,8 +128,6 @@ export default function FAQPage() {
           </Card>
         </div>
       </div>
-
-      <Footer />
     </div>
-  )
+  );
 }
