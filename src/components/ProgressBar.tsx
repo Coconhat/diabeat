@@ -7,21 +7,41 @@ export default function ProgressBar({
   current: number;
   total: number;
 }) {
-  const pct = Math.round((current / total) * 100);
-
   return (
-    <div className="w-full">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-sm text-muted">
-          Step {current} of {total}
+    <div className="w-full animate-fade-in">
+      {/* Label row */}
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs font-medium text-muted tracking-wide uppercase">
+          Question {current} of {total}
         </span>
-        <span className="text-sm font-medium text-primary">{pct}%</span>
+        <span className="text-xs font-semibold text-primary tabular-nums">
+          {Math.round((current / total) * 100)}%
+        </span>
       </div>
-      <div className="w-full h-2 bg-mint rounded-full overflow-hidden">
-        <div
-          className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
-          style={{ width: `${pct}%` }}
-        />
+
+      {/* Segmented bar */}
+      <div className="flex gap-1.5">
+        {Array.from({ length: total }, (_, i) => {
+          const isComplete = i < current - 1;
+          const isCurrent = i === current - 1;
+
+          return (
+            <div
+              key={i}
+              className="h-1.5 flex-1 rounded-full overflow-hidden bg-mint"
+            >
+              <div
+                className={`h-full rounded-full progress-segment ${
+                  isComplete
+                    ? "bg-primary w-full"
+                    : isCurrent
+                    ? "bg-primary w-full animate-breathe"
+                    : "w-0"
+                }`}
+              />
+            </div>
+          );
+        })}
       </div>
     </div>
   );
