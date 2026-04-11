@@ -58,7 +58,7 @@ export default function Home() {
           <div className="animate-fade-in-up stagger-4 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
             <Link
               href="/screen/medical"
-              className="btn-press w-full sm:w-auto px-8 py-3.5 bg-primary hover:bg-primary-dark text-white font-medium rounded-full transition-colors text-center shadow-[0_2px_12px_-2px_rgba(45,184,122,0.35)] hover:shadow-[0_4px_20px_-2px_rgba(45,184,122,0.4)]"
+              className="btn-press w-full sm:w-auto px-8 py-3.5 bg-primary hover:bg-primary-dark text-white font-medium rounded-full transition-colors text-center shadow-[0_2px_12px_-2px_rgba(0,119,182,0.35)] hover:shadow-[0_4px_20px_-2px_rgba(0,119,182,0.4)]"
             >
               I have medical data
             </Link>

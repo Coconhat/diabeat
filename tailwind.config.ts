@@ -9,9 +9,9 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        primary: "#2DB87A",
-        "primary-dark": "#1A9E64",
-        mint: "#E8F7F1",
+        primary: "#0077B6",
+        "primary-dark": "#00628F",
+        mint: "#E8F2F9",
         trust: "#2B6FEB",
         "trust-light": "#EBF1FD",
         page: "#F5F7FA",
