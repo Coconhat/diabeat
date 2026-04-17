@@ -15,7 +15,8 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: "Diabeat — Diabetes Risk Screening",
-  description: "Quick, confidential diabetes risk screening. Get your results in minutes.",
+  description:
+    "Quick, confidential diabetes risk screening. Get your results in minutes.",
 };
 
 export default function RootLayout({

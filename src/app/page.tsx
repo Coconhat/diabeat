@@ -1,5 +1,7 @@
+"use client";
 import Link from "next/link";
 import Logo from "@/components/Logo";
+import SplitText from "@/components/SplitText";
 
 export default function Home() {
   return (
@@ -43,12 +45,24 @@ export default function Home() {
             </div>
           </div>
 
-          <h1 className="animate-fade-in-up stagger-2 text-4xl sm:text-5xl md:text-[3.4rem] font-bold text-heading leading-[1.1] tracking-tight mb-5">
+          <h1 className=" text-4xl sm:text-5xl md:text-[3.4rem] font-bold text-heading leading-[1.1] tracking-tight ">
             Know your
             <br />
             diabetes risk{" "}
-            <span className="text-primary">in&nbsp;minutes</span>
           </h1>
+          <SplitText
+            text="in minutes"
+            className="text-4xl sm:text-5xl md:text-[3.4rem] font-bold  leading-[1.1] tracking-tight mb-5 text-primary"
+            delay={50}
+            duration={1.25}
+            ease="power3.out"
+            splitType="chars"
+            from={{ opacity: 0, y: 40 }}
+            to={{ opacity: 1, y: 0 }}
+            threshold={0.1}
+            rootMargin="-100px"
+            textAlign="center"
+          />
 
           <p className="animate-fade-in-up stagger-3 text-muted text-base sm:text-lg max-w-sm mx-auto mb-12 leading-relaxed">
             A quick, confidential screening to help you understand your risk
@@ -73,20 +87,50 @@ export default function Home() {
           {/* Trust indicators */}
           <div className="animate-fade-in-up stagger-5 mt-14 flex items-center justify-center gap-6 text-xs text-muted">
             <div className="flex items-center gap-1.5">
-              <svg className="w-3.5 h-3.5 text-primary" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              <svg
+                className="w-3.5 h-3.5 text-primary"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                />
               </svg>
               Private &amp; secure
             </div>
             <div className="flex items-center gap-1.5">
-              <svg className="w-3.5 h-3.5 text-primary" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg
+                className="w-3.5 h-3.5 text-primary"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
               Takes 2 minutes
             </div>
             <div className="flex items-center gap-1.5">
-              <svg className="w-3.5 h-3.5 text-primary" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg
+                className="w-3.5 h-3.5 text-primary"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
               No signup
             </div>

@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@14 . --typescript --tailwind --eslint --app --src-dir --no-import-alias --use-npm)",
+      "Bash(npx create-next-app@14 diabeat-temp --typescript --tailwind --eslint --app --src-dir --no-import-alias --use-npm)",
+      "Bash(cp -r diabeat-temp/* .)",
+      "Bash(cp diabeat-temp/.eslintrc.json .)",
+      "Bash(cp diabeat-temp/.gitignore .)",
+      "Bash(cp -r diabeat-temp/.git .)",
+      "Bash(rm -rf diabeat-temp)",
+      "Bash(cp -r diabeat-temp/package.json diabeat-temp/package-lock.json diabeat-temp/postcss.config.mjs diabeat-temp/tailwind.config.ts diabeat-temp/tsconfig.json diabeat-temp/next.config.mjs diabeat-temp/next-env.d.ts .)",
+      "Bash(cp -r diabeat-temp/src .)",
+      "Bash(cp -r diabeat-temp/node_modules .)",
+      "Bash(npx next:*)",
+      "mcp__Claude_Preview__preview_start"
+    ]
+  }
+}

@@ -4,19 +4,19 @@
 
 /* ── Base ── */
 body {
-  color: #1A1D23;
-  background: #F5F7FA;
+  color: #1a1d23;
+  background: #f5f7fa;
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
 
 ::selection {
-  background: #0077B6;
+  background: #0077b6;
   color: #fff;
 }
 
 /* ── Dot-grid atmosphere ── */
 .dot-grid {
-  background-image: radial-gradient(circle, #0077B610 1px, transparent 1px);
+  background-image: radial-gradient(circle, #0077b610 1px, transparent 1px);
   background-size: 28px 28px;
 }
 
@@ -33,8 +33,8 @@ input[type="number"] {
 /* ── Focus ring for inputs ── */
 input:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px #0077B633;
-  border-color: #0077B6;
+  box-shadow: 0 0 0 3px #0077b633;
+  border-color: #0077b6;
 }
 
 /* ── Smooth scroll ── */
@@ -44,7 +44,9 @@ html {
 
 /* ── Card hover lift ── */
 .card-hover {
-  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease;
+  transition:
+    transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.25s ease;
 }
 .card-hover:hover {
   transform: translateY(-2px);
@@ -53,7 +55,9 @@ html {
 
 /* ── Button press ── */
 .btn-press {
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
 }
 .btn-press:active:not(:disabled) {
   transform: scale(0.97);
@@ -68,32 +72,58 @@ html {
   box-shadow: 0 4px 12px -2px rgba(26, 29, 35, 0.05);
 }
 .option-selected {
-  box-shadow: 0 0 0 2px #0077B6, 0 2px 8px -2px rgba(0, 119, 182, 0.15);
+  box-shadow:
+    0 0 0 2px #0077b6,
+    0 2px 8px -2px rgba(0, 119, 182, 0.15);
 }
 
 /* ── Pulse ring for result badge ── */
 @keyframes pulse-ring {
-  0% { transform: scale(1); opacity: 0.4; }
-  100% { transform: scale(1.5); opacity: 0; }
+  0% {
+    transform: scale(1);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
 }
 .pulse-ring::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: -4px;
   border-radius: 9999px;
   animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
-.pulse-ring-low::before { background: #2DB87A; }
-.pulse-ring-moderate::before { background: #F5A623; }
-.pulse-ring-high::before { background: #E84040; }
+.pulse-ring-low::before {
+  background: #2db87a;
+}
+.pulse-ring-moderate::before {
+  background: #f5a623;
+}
+.pulse-ring-high::before {
+  background: #e84040;
+}
 
 /* ── Stagger entrance delays ── */
-.stagger-1 { animation-delay: 0ms; }
-.stagger-2 { animation-delay: 80ms; }
-.stagger-3 { animation-delay: 160ms; }
-.stagger-4 { animation-delay: 240ms; }
-.stagger-5 { animation-delay: 320ms; }
-.stagger-6 { animation-delay: 400ms; }
+.stagger-1 {
+  animation-delay: 0ms;
+}
+.stagger-2 {
+  animation-delay: 80ms;
+}
+.stagger-3 {
+  animation-delay: 160ms;
+}
+.stagger-4 {
+  animation-delay: 240ms;
+}
+.stagger-5 {
+  animation-delay: 320ms;
+}
+.stagger-6 {
+  animation-delay: 400ms;
+}
 
 /* ── Segmented progress ── */
 .progress-segment {
@@ -102,24 +132,43 @@ html {
 
 /* ── Floating decoration ── */
 @keyframes float {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-12px) rotate(3deg); }
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-12px) rotate(3deg);
+  }
 }
 @keyframes float-delayed {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-8px) rotate(-2deg); }
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(-2deg);
+  }
 }
-.float { animation: float 6s ease-in-out infinite; }
-.float-delayed { animation: float-delayed 8s ease-in-out infinite; }
+.float {
+  animation: float 6s ease-in-out infinite;
+}
+.float-delayed {
+  animation: float-delayed 8s ease-in-out infinite;
+}
 
 /* ── Typing cursor for AI insight ── */
 @keyframes blink-cursor {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
 }
 .typing-cursor::after {
-  content: '|';
-  color: #2B6FEB;
+  content: "|";
+  color: #2b6feb;
   animation: blink-cursor 1s step-end infinite;
   margin-left: 2px;
   font-weight: 300;
