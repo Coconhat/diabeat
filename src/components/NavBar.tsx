@@ -1,5 +1,8 @@
 "use client";
+import { RESULT_STORAGE_KEY } from "@/lib/prediction";
 import StaggeredMenu from "./StaggeredMenu";
+import { supabase } from "@/lib/supabase";
+import { useState } from "react";
 
 const menuItems = [
   { label: "Home", ariaLabel: "Go to home page", link: "/" },
@@ -13,12 +16,29 @@ const menuItems = [
 ];
 
 export default function NavBar() {
+  const [signingIn, setSigningIn] = useState(false);
+
+  const handleSignIn = async () => {
+    setSigningIn(true);
+    const raw = sessionStorage.getItem(RESULT_STORAGE_KEY);
+    if (raw) localStorage.setItem("pending_result", raw);
+
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
+      },
+    });
+  };
+  const socialItems = [{ label: "Google", onClick: handleSignIn }];
+
   return (
     <div className="flex items-center gap-2 text-2xl #1a1a1a">
       <StaggeredMenu
         position="right"
         items={menuItems}
-        displaySocials={false}
+        displaySocials={true}
+        socialItems={socialItems}
         displayItemNumbering={true}
         menuButtonColor="#ffffff"
         openMenuButtonColor="#fff"

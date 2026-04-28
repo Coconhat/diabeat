@@ -5,10 +5,12 @@ export interface StaggeredMenuItem {
   label: string;
   ariaLabel: string;
   link: string;
+  onclick?: () => void;
 }
 export interface StaggeredMenuSocialItem {
   label: string;
   link: string;
+  onClick?: () => void;
 }
 export interface StaggeredMenuProps {
   position?: "left" | "right";
@@ -27,6 +29,8 @@ export interface StaggeredMenuProps {
   closeOnClickAway?: boolean;
   onMenuOpen?: () => void;
   onMenuClose?: () => void;
+  link: string;
+  onclick?: () => void;
 }
 
 export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
@@ -591,7 +595,7 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
                 aria-label="Social links"
               >
                 <h3 className="sm-socials-title m-0 text-base font-medium [color:var(--sm-accent,#ff0000)]">
-                  Socials
+                  Sign in
                 </h3>
                 <ul
                   className="sm-socials-list list-none m-0 p-0 flex flex-row items-center gap-4 flex-wrap"
@@ -599,14 +603,15 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
                 >
                   {socialItems.map((s, i) => (
                     <li key={s.label + i} className="sm-socials-item">
-                      <a
-                        href={s.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="sm-socials-link text-[1.2rem] font-medium text-[#111] no-underline relative inline-block py-[2px] transition-[color,opacity] duration-300 ease-linear"
-                      >
-                        {s.label}
-                      </a>
+                      {s.onClick ? (
+                        <button onClick={s.onClick} className="sm-socials-link">
+                          {s.label}
+                        </button>
+                      ) : (
+                        <a href={s.link} className="sm-socials-link">
+                          {s.label}
+                        </a>
+                      )}
                     </li>
                   ))}
                 </ul>
