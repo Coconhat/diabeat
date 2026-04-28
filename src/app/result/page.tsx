@@ -4,7 +4,6 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Logo from "@/components/Logo";
-import SpotlightCard from "@/components/SpotlightCard";
 import {
   AIInsightProvider,
   AIInsightSections,
@@ -14,17 +13,16 @@ import {
   isLifestylePrediction,
   toRiskKey,
 } from "@/lib/prediction";
+// import { supabase } from "@/lib/supabase"; // uncomment when Supabase is wired
 
 // ── Risk config ────────────────────────────────────────────────
 const riskConfig: Record<
   RiskKey,
   {
     label: string;
-    badge: string; // badge bg + text
-    accent: string; // border / ring
-    pill: string; // subtle pill behind badge
-    bar: string; // progress bar fill
-    icon: string; // icon color
+    badge: string;
+    accent: string;
+    bar: string;
     explanation: string;
   }
 > = {
@@ -32,9 +30,7 @@ const riskConfig: Record<
     label: "Low Risk",
     badge: "bg-risk-low text-white",
     accent: "border-risk-low/30",
-    pill: "bg-mint/40",
     bar: "bg-risk-low",
-    icon: "text-risk-low",
     explanation:
       "Your indicators suggest a low likelihood of diabetes at this time. Keep up the healthy habits — consistent lifestyle choices are the best long-term protection.",
   },
@@ -42,9 +38,7 @@ const riskConfig: Record<
     label: "Moderate Risk",
     badge: "bg-risk-moderate text-white",
     accent: "border-risk-moderate/30",
-    pill: "bg-amber-50",
     bar: "bg-risk-moderate",
-    icon: "text-risk-moderate",
     explanation:
       "Some of your indicators fall outside the typical range. This isn't a diagnosis, but it's a signal worth discussing with a healthcare professional soon.",
   },
@@ -52,9 +46,7 @@ const riskConfig: Record<
     label: "High Risk",
     badge: "bg-risk-high text-white",
     accent: "border-risk-high/30",
-    pill: "bg-red-50",
     bar: "bg-risk-high",
-    icon: "text-risk-high",
     explanation:
       "Your screening shows an elevated risk profile. Please consult a healthcare professional as soon as possible for proper clinical testing — early detection makes a significant difference.",
   },
@@ -88,16 +80,13 @@ function formatTime(iso: string): string {
   });
 }
 
-function fallbackClientInsight(result: StoredResult): AIInsightSections {
+function fallbackInsight(result: StoredResult): AIInsightSections {
   const score = scoreToPercent(result.prediction.risk_score);
-
   if (isLifestylePrediction(result.prediction)) {
-    const symptom = scoreToPercent(result.prediction.breakdown.symptom_score);
-    const lifestyle = scoreToPercent(
-      result.prediction.breakdown.lifestyle_score,
-    );
+    const s = scoreToPercent(result.prediction.breakdown.symptom_score);
+    const l = scoreToPercent(result.prediction.breakdown.lifestyle_score);
     return {
-      summary: `Your estimated risk is ${result.prediction.risk_level.toLowerCase()} (${score}%). Symptom signals scored ${symptom}% and lifestyle signals scored ${lifestyle}%.`,
+      summary: `Your estimated risk is ${result.prediction.risk_level.toLowerCase()} (${score}%). Symptom signals scored ${s}% and lifestyle signals scored ${l}%.`,
       combatSteps: [
         "Aim for at least 150 minutes of moderate physical activity per week.",
         "Reduce sugar-heavy foods and prioritize fiber-rich, balanced meals.",
@@ -110,7 +99,6 @@ function fallbackClientInsight(result: StoredResult): AIInsightSections {
       ],
     };
   }
-
   return {
     summary: `Your estimated risk is ${result.prediction.risk_level.toLowerCase()} (${score}%). This is a screening estimate based on your submitted medical values — not a diagnosis.`,
     combatSteps: [
@@ -126,7 +114,7 @@ function fallbackClientInsight(result: StoredResult): AIInsightSections {
   };
 }
 
-// ── Score ring SVG ─────────────────────────────────────────────
+// ── Score ring ─────────────────────────────────────────────────
 function ScoreRing({
   percent,
   riskKey,
@@ -142,8 +130,6 @@ function ScoreRing({
     moderate: "#F5A623",
     high: "#E84040",
   };
-  const color = colorMap[riskKey];
-
   return (
     <div className="relative inline-flex items-center justify-center">
       <svg width="128" height="128" className="-rotate-90">
@@ -160,11 +146,11 @@ function ScoreRing({
           cy="64"
           r={r}
           fill="none"
-          stroke={color}
+          stroke={colorMap[riskKey]}
           strokeWidth="10"
           strokeLinecap="round"
           strokeDasharray={`${dash} ${circ}`}
-          style={{ transition: "stroke-dasharray 1s ease" }}
+          style={{ transition: "stroke-dasharray 1.2s ease" }}
         />
       </svg>
       <div className="absolute flex flex-col items-center">
@@ -177,7 +163,7 @@ function ScoreRing({
   );
 }
 
-// ── Trend mini-bar ─────────────────────────────────────────────
+// ── Mini bar ───────────────────────────────────────────────────
 function MiniBar({
   label,
   value,
@@ -208,17 +194,186 @@ function MiniBar({
   );
 }
 
-// ── Main result content ────────────────────────────────────────
+// ── Blurred fake preview ───────────────────────────────────────
+function BlurredPreview() {
+  return (
+    <div
+      className="px-6 py-6 space-y-6 pointer-events-none select-none"
+      aria-hidden
+    >
+      {/* Fake summary section */}
+      <div className="space-y-2">
+        <div className="h-2 w-16 bg-gray-200 rounded-full" />
+        <div className="h-3 bg-gray-200 rounded-full w-[92%]" />
+        <div className="h-3 bg-gray-200 rounded-full w-[78%]" />
+        <div className="h-3 bg-gray-200 rounded-full w-[85%]" />
+      </div>
+      {/* Fake steps */}
+      <div className="space-y-3">
+        <div className="h-2 w-24 bg-gray-200 rounded-full" />
+        {[88, 72, 80].map((w, i) => (
+          <div key={i} className="flex gap-2.5 items-start">
+            <div className="w-5 h-5 rounded-full bg-gray-200 flex-shrink-0 mt-0.5" />
+            <div
+              className={`h-3 bg-gray-200 rounded-full mt-1`}
+              style={{ width: `${w}%` }}
+            />
+          </div>
+        ))}
+      </div>
+      {/* Fake suggestions */}
+      <div className="space-y-3">
+        <div className="h-2 w-28 bg-gray-200 rounded-full" />
+        {[75, 90, 68].map((w, i) => (
+          <div key={i} className="flex gap-2.5 items-start">
+            <div className="w-4 h-4 rounded bg-gray-200 flex-shrink-0 mt-0.5" />
+            <div
+              className={`h-3 bg-gray-200 rounded-full mt-0.5`}
+              style={{ width: `${w}%` }}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Sign-in gate overlay ───────────────────────────────────────
+function SignInGate({
+  onSignIn,
+  signingIn,
+}: {
+  onSignIn: () => void;
+  signingIn: boolean;
+}) {
+  return (
+    <div
+      className="absolute inset-0 z-10 flex flex-col items-center justify-center px-6 text-center rounded-2xl"
+      style={{
+        background:
+          "linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.88) 22%, rgba(255,255,255,1) 42%)",
+      }}
+    >
+      {/* Urgency badge */}
+      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-mint/70 text-primary text-[11px] font-bold uppercase tracking-wider mb-3">
+        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+          <path
+            fillRule="evenodd"
+            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+            clipRule="evenodd"
+          />
+        </svg>
+        Free forever · No credit card
+      </div>
+
+      {/* Headline */}
+      <h3 className="text-[22px] font-bold text-heading leading-tight mb-2">
+        Your full AI insight is ready
+      </h3>
+
+      {/* Sub-copy */}
+      <p className="text-sm text-muted max-w-[280px] leading-relaxed mb-5">
+        Sign in to unlock it — plus track your diabetes risk over time and get
+        notified if anything changes.
+      </p>
+
+      {/* Feature grid */}
+      <div className="grid grid-cols-2 gap-2 mb-6 w-full max-w-xs text-left">
+        {[
+          {
+            icon: "🧠",
+            label: "Full AI explanation",
+            sub: "Personalized to your result",
+          },
+          {
+            icon: "📅",
+            label: "Screening history",
+            sub: "Every test, saved forever",
+          },
+          {
+            icon: "📈",
+            label: "Trend tracking",
+            sub: "See if risk improves over time",
+          },
+          {
+            icon: "🔒",
+            label: "Private & encrypted",
+            sub: "Your data stays yours",
+          },
+        ].map((f) => (
+          <div
+            key={f.label}
+            className="flex items-start gap-2 bg-white/80 border border-gray-100 rounded-xl px-3 py-2.5"
+          >
+            <span className="text-base mt-0.5">{f.icon}</span>
+            <div>
+              <p className="text-[11px] font-semibold text-heading">
+                {f.label}
+              </p>
+              <p className="text-[10px] text-muted leading-tight mt-0.5">
+                {f.sub}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Google CTA */}
+      <button
+        onClick={onSignIn}
+        disabled={signingIn}
+        className="w-full max-w-xs flex items-center justify-center gap-3 px-6 py-3.5 bg-heading hover:opacity-90 text-white font-semibold rounded-full text-sm shadow-[0_4px_16px_-4px_rgba(26,29,35,0.35)] transition-all mb-2 disabled:opacity-60"
+      >
+        {signingIn ? (
+          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+        ) : (
+          <svg
+            className="w-4 h-4 flex-shrink-0"
+            viewBox="0 0 24 24"
+            fill="none"
+          >
+            <path
+              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+              fill="#4285F4"
+            />
+            <path
+              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+              fill="#34A853"
+            />
+            <path
+              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+              fill="#FBBC05"
+            />
+            <path
+              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+              fill="#EA4335"
+            />
+          </svg>
+        )}
+        {signingIn ? "Redirecting..." : "Continue with Google — it's free"}
+      </button>
+
+      <p className="text-[10px] text-muted max-w-[240px]">
+        Your health data is encrypted and never shared or sold.
+      </p>
+    </div>
+  );
+}
+
+// ── Main content ───────────────────────────────────────────────
 function ResultContent() {
   const params = useSearchParams();
   const [storedResult, setStoredResult] = useState<StoredResult | null>(null);
   const [insight, setInsight] = useState<AIInsightSections | null>(null);
   const [insightProvider, setInsightProvider] =
     useState<AIInsightProvider>("fallback");
-  const [isInsightLoading, setIsInsightLoading] = useState(false);
-  const [insightWarning, setInsightWarning] = useState("");
   const [insightModel, setInsightModel] = useState("");
-  const [saved, setSaved] = useState(false);
+  const [insightWarning, setInsightWarning] = useState("");
+  const [isInsightLoading, setIsInsightLoading] = useState(false);
+
+  // TODO: replace with real Supabase auth check
+  const [isSignedIn] = useState(false);
+  const [signingIn, setSigningIn] = useState(false);
 
   useEffect(() => {
     const raw = sessionStorage.getItem(RESULT_STORAGE_KEY);
@@ -238,35 +393,34 @@ function ResultContent() {
 
   const risk = riskConfig[riskKey];
 
+  // Only fetch insight when signed in
   useEffect(() => {
-    if (!storedResult) {
+    if (!storedResult || !isSignedIn) {
       setInsight(null);
       return;
     }
     let cancelled = false;
 
-    const loadInsight = async () => {
+    const load = async () => {
       setIsInsightLoading(true);
       setInsightWarning("");
       try {
-        const response = await fetch("/api/gemini-insight", {
+        const res = await fetch("/api/gemini-insight", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(storedResult),
         });
-        if (!response.ok)
-          throw new Error(`Insight API failed (${response.status})`);
-        const payload = (await response.json()) as InsightResponse;
+        if (!res.ok) throw new Error(`${res.status}`);
+        const payload = (await res.json()) as InsightResponse;
         if (cancelled) return;
-        setInsightWarning(payload.warning ?? "");
         setInsightProvider(payload.provider ?? "fallback");
         setInsightModel(payload.model ?? "");
-        setInsight(payload.insight ?? fallbackClientInsight(storedResult));
+        setInsightWarning(payload.warning ?? "");
+        setInsight(payload.insight ?? fallbackInsight(storedResult));
       } catch {
         if (cancelled) return;
-        setInsight(fallbackClientInsight(storedResult));
+        setInsight(fallbackInsight(storedResult));
         setInsightProvider("fallback");
-        setInsightModel("");
         setInsightWarning(
           "Gemini is temporarily unavailable — showing fallback guidance.",
         );
@@ -275,11 +429,23 @@ function ResultContent() {
       }
     };
 
-    void loadInsight();
+    void load();
     return () => {
       cancelled = true;
     };
-  }, [storedResult]);
+  }, [storedResult, isSignedIn]);
+
+  const handleSignIn = async () => {
+    setSigningIn(true);
+    const raw = sessionStorage.getItem(RESULT_STORAGE_KEY);
+    if (raw) localStorage.setItem("pending_result", raw);
+
+    // TODO: uncomment when Supabase is wired
+    // await supabase.auth.signInWithOAuth({
+    //   provider: "google",
+    //   options: { redirectTo: `${window.location.origin}/auth/callback?next=/result/save` },
+    // });
+  };
 
   const riskScore = storedResult
     ? scoreToPercent(storedResult.prediction.risk_score)
@@ -299,7 +465,7 @@ function ResultContent() {
   return (
     <section className="flex-1 flex flex-col items-center px-4 sm:px-6 pt-8 pb-24">
       <div className="w-full max-w-2xl space-y-4">
-        {/* ── 1. Date + meta row ─────────────────────────── */}
+        {/* ── Date + meta ─────────────────────────────────── */}
         {takenAt && (
           <div className="flex items-center justify-between px-1 animate-fade-in">
             <div>
@@ -320,20 +486,17 @@ function ResultContent() {
           </div>
         )}
 
-        {/* ── 2. Hero result card ────────────────────────── */}
+        {/* ── Risk card ───────────────────────────────────── */}
         <div
           className={`bg-card border-2 ${risk.accent} rounded-2xl p-7 sm:p-8 animate-fade-in-up stagger-1`}
         >
           <div className="flex flex-col sm:flex-row items-center gap-6">
-            {/* Score ring — the primary visual */}
             {riskScore !== null && (
               <div className="flex-shrink-0">
                 <ScoreRing percent={riskScore} riskKey={riskKey} />
               </div>
             )}
-
             <div className="flex-1 text-center sm:text-left">
-              {/* Risk badge */}
               <span
                 className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-bold ${risk.badge} mb-3`}
               >
@@ -352,15 +515,12 @@ function ResultContent() {
                 </svg>
                 {risk.label}
               </span>
-
-              {/* Explanation — primary body text */}
               <p className="text-heading text-sm leading-relaxed">
                 {risk.explanation}
               </p>
             </div>
           </div>
 
-          {/* Sub-scores — only for lifestyle */}
           {isLifestyle && symptomPct !== null && lifestylePct !== null && (
             <div className="mt-6 pt-5 border-t border-gray-100 space-y-3">
               <p className="text-xs uppercase tracking-widest text-muted font-medium mb-3">
@@ -380,140 +540,142 @@ function ResultContent() {
           )}
         </div>
 
-        {/* ── 3. AI Insight card ─────────────────────────── */}
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden animate-fade-in-up stagger-2">
-          {/* Card header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-trust-light flex items-center justify-center">
-                <svg
-                  className="w-4 h-4 text-trust"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-                  />
-                </svg>
+        {/* ── AI Insight — blurred with gate if not signed in ── */}
+        <div className="relative rounded-2xl overflow-hidden animate-fade-in-up stagger-2">
+          {/* The card itself */}
+          <div
+            className={`bg-white border border-slate-200 rounded-2xl overflow-hidden ${!isSignedIn ? "pointer-events-none" : ""}`}
+          >
+            {/* Header — always visible */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-trust-light flex items-center justify-center">
+                  <svg
+                    className="w-4 h-4 text-trust"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-heading">
+                    AI-generated insight
+                  </p>
+                  <p className="text-[11px] text-muted">
+                    Personalized to your screening
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-semibold text-heading">
-                  AI-generated insight
-                </p>
-                <p className="text-[11px] text-muted">
-                  Personalized to your screening
-                </p>
-              </div>
+              {isSignedIn && (
+                <span className="text-[11px] text-muted bg-page px-2.5 py-1 rounded-full border border-gray-200">
+                  {insightProvider === "gemini"
+                    ? `Gemini${insightModel ? ` · ${insightModel}` : ""}`
+                    : "Fallback guidance"}
+                </span>
+              )}
             </div>
-            <span className="text-[11px] text-muted bg-page px-2.5 py-1 rounded-full border border-gray-200">
-              {insightProvider === "gemini"
-                ? `Gemini${insightModel ? ` · ${insightModel}` : ""}`
-                : "Fallback guidance"}
-            </span>
+
+            {/* Body */}
+            {!isSignedIn && (
+              <div className="filter blur-sm">
+                <BlurredPreview />
+              </div>
+            )}
+
+            {isSignedIn && isInsightLoading && (
+              <div className="p-6 space-y-3">
+                {[80, 60, 70].map((w, i) => (
+                  <div
+                    key={i}
+                    className="h-3 bg-gray-100 rounded-full animate-pulse"
+                    style={{ width: `${w}%` }}
+                  />
+                ))}
+              </div>
+            )}
+
+            {isSignedIn && !isInsightLoading && insight && (
+              <div className="divide-y divide-slate-100">
+                <div className="px-6 py-5">
+                  <p className="text-[11px] uppercase tracking-widest text-muted font-semibold mb-2">
+                    Summary
+                  </p>
+                  <p className="text-sm text-heading leading-relaxed">
+                    {insight.summary}
+                  </p>
+                </div>
+                <div className="px-6 py-5">
+                  <p className="text-[11px] uppercase tracking-widest text-muted font-semibold mb-3">
+                    How to reduce your risk
+                  </p>
+                  <ol className="space-y-2.5">
+                    {insight.combatSteps.map((step, i) => (
+                      <li
+                        key={i}
+                        className="flex gap-3 text-sm text-heading leading-relaxed"
+                      >
+                        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-mint text-primary text-[11px] font-bold flex items-center justify-center mt-0.5">
+                          {i + 1}
+                        </span>
+                        {step}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+                <div className="px-6 py-5">
+                  <p className="text-[11px] uppercase tracking-widest text-muted font-semibold mb-3">
+                    Suggested next steps
+                  </p>
+                  <ul className="space-y-2.5">
+                    {insight.suggestions.map((s, i) => (
+                      <li
+                        key={i}
+                        className="flex gap-3 text-sm text-heading leading-relaxed"
+                      >
+                        <svg
+                          className="flex-shrink-0 w-4 h-4 text-primary mt-0.5"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth={2.5}
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M9 5l7 7-7 7"
+                          />
+                        </svg>
+                        {s}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {isSignedIn && insightWarning && (
+              <div className="mx-6 mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                <p className="text-xs text-amber-800 leading-relaxed">
+                  {insightWarning}
+                </p>
+              </div>
+            )}
           </div>
 
-          {/* Loading skeleton */}
-          {isInsightLoading && (
-            <div className="p-6 space-y-3">
-              {[80, 60, 70].map((w, i) => (
-                <div
-                  key={i}
-                  className="h-3 bg-gray-100 rounded-full animate-pulse"
-                  style={{ width: `${w}%` }}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Insight content — stacked, not 3 cols */}
-          {!isInsightLoading && insight && (
-            <div className="divide-y divide-slate-100">
-              {/* Summary */}
-              <div className="px-6 py-5">
-                <p className="text-[11px] uppercase tracking-widest text-muted font-semibold mb-2">
-                  Summary
-                </p>
-                <p className="text-sm text-heading leading-relaxed">
-                  {insight.summary}
-                </p>
-              </div>
-
-              {/* Combat steps */}
-              <div className="px-6 py-5">
-                <p className="text-[11px] uppercase tracking-widest text-muted font-semibold mb-3">
-                  How to reduce your risk
-                </p>
-                <ol className="space-y-2.5">
-                  {insight.combatSteps.map((step, i) => (
-                    <li
-                      key={i}
-                      className="flex gap-3 text-sm text-heading leading-relaxed"
-                    >
-                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-mint text-primary text-[11px] font-bold flex items-center justify-center mt-0.5">
-                        {i + 1}
-                      </span>
-                      {step}
-                    </li>
-                  ))}
-                </ol>
-              </div>
-
-              {/* Suggestions */}
-              <div className="px-6 py-5">
-                <p className="text-[11px] uppercase tracking-widest text-muted font-semibold mb-3">
-                  Suggested next steps
-                </p>
-                <ul className="space-y-2.5">
-                  {insight.suggestions.map((s, i) => (
-                    <li
-                      key={i}
-                      className="flex gap-3 text-sm text-heading leading-relaxed"
-                    >
-                      <svg
-                        className="flex-shrink-0 w-4 h-4 text-primary mt-0.5"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth={2.5}
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
-                      {s}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          )}
-
-          {/* No insight state */}
-          {!isInsightLoading && !insight && (
-            <div className="px-6 py-8 text-center">
-              <p className="text-sm text-muted">
-                Complete a screening to see your personalized AI insight here.
-              </p>
-            </div>
-          )}
-
-          {/* Warning banner */}
-          {insightWarning && (
-            <div className="mx-6 mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-              <p className="text-xs text-amber-800 leading-relaxed">
-                {insightWarning}
-              </p>
-            </div>
+          {/* Gate overlay — shown only when not signed in */}
+          {!isSignedIn && (
+            <SignInGate onSignIn={handleSignIn} signingIn={signingIn} />
           )}
         </div>
 
-        {/* ── 4. Disclaimer ──────────────────────────────── */}
+        {/* ── Disclaimer ──────────────────────────────────── */}
         <div className="flex gap-3 px-4 py-4 bg-page border border-dashed border-gray-200 rounded-xl animate-fade-in-up stagger-3">
           <svg
             className="w-4 h-4 text-muted mt-0.5 flex-shrink-0"
@@ -537,80 +699,27 @@ function ResultContent() {
           </p>
         </div>
 
-        {/* ── 5. Actions ─────────────────────────────────── */}
-        <div className="space-y-2.5 animate-fade-in-up stagger-4">
-          {/* Primary CTA — Save result */}
-          {!saved && storedResult && (
-            <button
-              onClick={() => {
-                // Store for OAuth → save flow
-                localStorage.setItem(
-                  "pending_result",
-                  sessionStorage.getItem(RESULT_STORAGE_KEY) ?? "",
-                );
-                // TODO: trigger supabase OAuth
-                setSaved(true);
-              }}
-              className="btn-press w-full px-8 py-4 bg-primary hover:bg-primary-dark text-white font-semibold rounded-full transition-all text-center shadow-[0_2px_12px_-2px_rgba(45,184,122,0.4)] hover:shadow-[0_4px_20px_-2px_rgba(45,184,122,0.5)] flex items-center justify-center gap-2"
+        {/* ── Start over ──────────────────────────────────── */}
+        <div className="animate-fade-in-up stagger-4">
+          <Link
+            href="/"
+            className="btn-press flex items-center justify-center gap-2 w-full px-5 py-3.5 bg-page hover:bg-gray-100 text-muted hover:text-heading font-medium rounded-full transition-colors text-sm border border-gray-200"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              viewBox="0 0 24 24"
             >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
-                />
-              </svg>
-              Save result to my history
-            </button>
-          )}
-
-          {saved && (
-            <div className="w-full px-8 py-4 bg-mint/60 border border-risk-low/30 text-primary font-semibold rounded-full text-center text-sm flex items-center justify-center gap-2">
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2.5}
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-              Saved — signing you in...
-            </div>
-          )}
-
-          {/* Secondary CTAs */}
-          <div className="grid grid-cols-2 gap-2.5">
-            <Link
-              href="/"
-              className="btn-press flex items-center justify-center gap-2 px-5 py-3.5 bg-page hover:bg-gray-100 text-muted hover:text-heading font-medium rounded-full transition-colors text-sm border border-gray-200"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-              Start over
-            </Link>
-          </div>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+            Start over
+          </Link>
         </div>
       </div>
     </section>
