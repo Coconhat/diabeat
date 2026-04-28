@@ -13,6 +13,7 @@ import {
   isLifestylePrediction,
   toRiskKey,
 } from "@/lib/prediction";
+import { supabase } from "@/lib/supabase";
 // import { supabase } from "@/lib/supabase"; // uncomment when Supabase is wired
 
 // ── Risk config ────────────────────────────────────────────────
@@ -263,7 +264,7 @@ function SignInGate({
             clipRule="evenodd"
           />
         </svg>
-        Free forever · No credit card
+        Free forever
       </div>
 
       {/* Headline */}
@@ -440,11 +441,12 @@ function ResultContent() {
     const raw = sessionStorage.getItem(RESULT_STORAGE_KEY);
     if (raw) localStorage.setItem("pending_result", raw);
 
-    // TODO: uncomment when Supabase is wired
-    // await supabase.auth.signInWithOAuth({
-    //   provider: "google",
-    //   options: { redirectTo: `${window.location.origin}/auth/callback?next=/result/save` },
-    // });
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?next=/result/save`,
+      },
+    });
   };
 
   const riskScore = storedResult
