@@ -642,7 +642,7 @@ function ResultContent() {
 // ── Page shell ─────────────────────────────────────────────────
 export default function ResultPage() {
   return (
-    <main className="min-h-screen flex flex-col bg-page">
+    <main className="min-h-screen flex flex-col bg-white">
       <nav className="w-full px-6 py-5 border-b border-gray-100/60 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <Logo />

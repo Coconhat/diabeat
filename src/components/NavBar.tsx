@@ -20,16 +20,16 @@ const menuItems = [
 
 export default function NavBar() {
   return (
-    <div className="flex items-center gap-2 text-2xl text-black">
+    <div className="flex items-center gap-2 text-2xl #1a1a1a">
       <StaggeredMenu
         position="right"
         items={menuItems}
         displaySocials={false}
         displayItemNumbering={true}
-        menuButtonColor="#1a1d23"
-        openMenuButtonColor="#1a1d23"
+        menuButtonColor="#ffffff"
+        openMenuButtonColor="#fff"
         changeMenuColorOnOpen={true}
-        colors={["#1a1d23", "#1a1d23"]}
+        colors={["#B497CF", "#5227FF"]}
         logoUrl="/favicon.ico"
         accentColor="#5227FF"
         isFixed
