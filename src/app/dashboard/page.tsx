@@ -9,17 +9,45 @@ import type { User } from "@supabase/supabase-js";
 
 type RiskLevel = "Low" | "Moderate" | "High";
 
+type ScreeningResult = {
+  risk_score: number;
+  risk_level: RiskLevel;
+  probabilities: Record<string, number>;
+  breakdown: { symptom_score?: number; lifestyle_score?: number } | null;
+};
+
 interface Screening {
   id: string;
   source: "medical" | "lifestyle";
-  test_taken_on: string; // "2026-04-28"
-  submitted_at: string; // ISO
+  test_taken_on: string;
+  submitted_at: string;
+  screening_results: ScreeningResult | null;
+}
+
+type ScreeningRowFromDB = {
+  id: string;
+  source: "medical" | "lifestyle";
+  test_taken_on: string;
+  submitted_at: string;
   screening_results: {
     risk_score: number;
-    risk_level: RiskLevel;
+    risk_level: string;
     probabilities: Record<string, number>;
     breakdown: { symptom_score?: number; lifestyle_score?: number } | null;
-  } | null;
+  }[];
+};
+
+function normalizeScreeningRow(row: ScreeningRowFromDB): Screening {
+  const firstResult = row.screening_results?.[0] ?? null;
+  return {
+    ...row,
+    screening_results: firstResult
+      ? {
+          ...firstResult,
+          risk_level: firstResult.risk_level as RiskLevel,
+        }
+      : null,
+  };
 }
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -232,7 +260,11 @@ function ScreeningRow({ s, isLatest }: { s: Screening; isLatest: boolean }) {
 
   return (
     <div
-      className={`flex items-center gap-4 px-5 py-4 rounded-xl border transition-all hover:shadow-sm ${isLatest ? "border-primary/20 bg-mint/10" : "border-gray-100 bg-white hover:border-gray-200"}`}
+      className={`flex items-center gap-4 px-5 py-4 rounded-xl border transition-all hover:shadow-sm ${
+        isLatest
+          ? "border-primary/20 bg-mint/10"
+          : "border-gray-100 bg-white hover:border-gray-200"
+      }`}
     >
       {/* Mini ring */}
       <div className="relative flex-shrink-0 w-10 h-10">
@@ -253,7 +285,9 @@ function ScreeningRow({ s, isLatest }: { s: Screening; isLatest: boolean }) {
             stroke={riskColor[level]}
             strokeWidth="5"
             strokeLinecap="round"
-            strokeDasharray={`${(pct / 100) * 2 * Math.PI * 16} ${2 * Math.PI * 16}`}
+            strokeDasharray={`${(pct / 100) * 2 * Math.PI * 16} ${
+              2 * Math.PI * 16
+            }`}
           />
         </svg>
         <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-heading">
@@ -388,6 +422,7 @@ async function saveScreeningToSupabase(
     });
   }
 }
+
 // ── Main page ──────────────────────────────────────────────────
 export default function DashboardPage() {
   const router = useRouter();
@@ -424,27 +459,30 @@ export default function DashboardPage() {
         .from("screenings")
         .select(
           `
-          id,
-          source,
-          test_taken_on,
-          submitted_at,
-          screening_results (
-            risk_score,
-            risk_level,
-            probabilities,
-            breakdown
-          )
-        `,
+            id,
+            source,
+            test_taken_on,
+            submitted_at,
+            screening_results (
+              risk_score,
+              risk_level,
+              probabilities,
+              breakdown
+            )
+          `,
         )
         .eq("user_id", user.id)
         .order("test_taken_on", { ascending: false })
         .order("submitted_at", { ascending: false });
 
-      setScreenings((data as Screening[]) ?? []);
+      const normalized = ((data ?? []) as ScreeningRowFromDB[]).map(
+        normalizeScreeningRow,
+      );
+      setScreenings(normalized);
       setLoading(false);
     };
 
-    void init();
+    init();
   }, [router]);
 
   const handleSignOut = async () => {

@@ -173,6 +173,20 @@ export default function MedicalScreen() {
       bmi: toNumber(data.bmi),
     };
 
+    const inputSummary: Record<string, string | number | boolean | null> = {
+      gender: payload.gender,
+      age: payload.age,
+      urea: payload.urea,
+      cr: payload.cr,
+      hba1c: payload.hba1c,
+      chol: payload.chol,
+      tg: payload.tg,
+      hdl: payload.hdl,
+      ldl: payload.ldl,
+      vldl: payload.vldl,
+      bmi: payload.bmi,
+    };
+
     setSubmitError("");
     setIsSubmitting(true);
 
@@ -191,10 +205,7 @@ export default function MedicalScreen() {
       const stored: StoredResult = {
         source: "medical",
         prediction,
-        inputSummary: payload as Record<
-          string,
-          string | number | boolean | null
-        >,
+        inputSummary,
         submittedAt: new Date().toISOString(),
       };
 

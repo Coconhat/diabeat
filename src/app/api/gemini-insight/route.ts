@@ -80,7 +80,7 @@ function fallbackInsight(data: {
 function buildPrompt(data: {
   source: "medical" | "lifestyle";
   prediction: PredictionResult;
-  inputSummary: Record<string, string | number>;
+  inputSummary: Record<string, string | number | boolean | null>;
 }): string {
   const risk = data.prediction.risk_level.toLowerCase() as
     | "low"

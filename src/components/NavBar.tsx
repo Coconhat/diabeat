@@ -30,7 +30,7 @@ export default function NavBar() {
       },
     });
   };
-  const socialItems = [{ label: "Google", onClick: handleSignIn }];
+  const socialItems = [{ label: "Google", onClick: handleSignIn, link: "#" }];
 
   return (
     <div className="flex items-center gap-2 text-2xl #1a1a1a">
@@ -47,6 +47,7 @@ export default function NavBar() {
         logoUrl="/favicon.ico"
         accentColor="#5227FF"
         isFixed
+        link=""
         onMenuOpen={() => console.log("Menu opened")}
         onMenuClose={() => console.log("Menu closed")}
       />

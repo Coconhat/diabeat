@@ -396,7 +396,7 @@ function ResultContent() {
           prediction: {
             risk_score: storedResult.prediction.risk_score,
             risk_level: storedResult.prediction.risk_level,
-            probabilities: storedResult.prediction.probabilities,
+            probabilities: storedResult.prediction.probabilities as any, // ✅ fix: allow nested probabilities for lifestyle model
             breakdown: isLifestylePrediction(storedResult.prediction)
               ? storedResult.prediction.breakdown
               : undefined,
@@ -416,7 +416,7 @@ function ResultContent() {
     };
 
     void save();
-  }, [storedResult, isSignedIn, authLoading]); // eslint-disable-line
+  }, [storedResult, isSignedIn, authLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {

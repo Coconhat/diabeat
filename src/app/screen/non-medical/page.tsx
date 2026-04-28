@@ -327,7 +327,7 @@ export default function NonMedicalScreen() {
       const stored: StoredResult = {
         source: "lifestyle",
         prediction,
-        inputSummary: payload as Record<
+        inputSummary: payload as unknown as Record<
           string,
           string | number | boolean | null
         >,
