@@ -24,7 +24,7 @@ interface Screening {
   screening_results: ScreeningResult | null;
 }
 
-// Helpers
+// ── Helpers ────────────────────────────────────────────────────
 const riskColor: Record<RiskLevel, string> = {
   Low: "#2DB87A",
   Moderate: "#F5A623",
@@ -66,10 +66,7 @@ function memberSince(iso: string): string {
   });
 }
 
-// TrendSparkline, ScoreRing, ScreeningRow, EmptyState – same as before
-// (I'll include them below, but they are unchanged from your original)
-
-// ── Mini trend sparkline (unchanged) ───────────────────────────────────────
+// ── Trend sparkline (unchanged) ───────────────────────────────
 function TrendSparkline({ screenings }: { screenings: Screening[] }) {
   const points = screenings
     .filter((s) => s.screening_results)
@@ -93,7 +90,6 @@ function TrendSparkline({ screenings }: { screenings: Screening[] }) {
   const path = coords
     .map((c, i) => `${i === 0 ? "M" : "L"} ${c.x} ${c.y}`)
     .join(" ");
-
   const fill = [
     ...coords.map((c) => `${c.x},${c.y}`),
     `${coords[coords.length - 1].x},${H}`,
@@ -187,10 +183,11 @@ function TrendSparkline({ screenings }: { screenings: Screening[] }) {
   );
 }
 
-// ── Score ring (unchanged) ─────────────────────────────────────────────────
+// ── Score ring (big) ──────────────────────────────────────────
 function ScoreRing({ percent, level }: { percent: number; level: RiskLevel }) {
   const r = 42,
     circ = 2 * Math.PI * r;
+  const color = riskColor[level];
   return (
     <div className="relative inline-flex items-center justify-center flex-shrink-0">
       <svg width="100" height="100" className="-rotate-90">
@@ -207,7 +204,7 @@ function ScoreRing({ percent, level }: { percent: number; level: RiskLevel }) {
           cy="50"
           r={r}
           fill="none"
-          stroke={riskColor[level]}
+          stroke={color}
           strokeWidth="9"
           strokeLinecap="round"
           strokeDasharray={`${(percent / 100) * circ} ${circ}`}
@@ -224,7 +221,7 @@ function ScoreRing({ percent, level }: { percent: number; level: RiskLevel }) {
   );
 }
 
-// ── Screening row (unchanged) ──────────────────────────────────────────────
+// ── Screening Row with colored circle + link ──────────────────
 function ScreeningRow({ s, isLatest }: { s: Screening; isLatest: boolean }) {
   const result = s.screening_results;
   if (!result) return null;
@@ -232,13 +229,15 @@ function ScreeningRow({ s, isLatest }: { s: Screening; isLatest: boolean }) {
   const level = result.risk_level;
 
   return (
-    <div
+    <Link
+      href={`/screening/${s.id}`}
       className={`flex items-center gap-4 px-5 py-4 rounded-xl border transition-all hover:shadow-sm ${
         isLatest
           ? "border-primary/20 bg-mint/10"
           : "border-gray-100 bg-white hover:border-gray-200"
       }`}
     >
+      {/* Mini ring with dynamic risk color */}
       <div className="relative flex-shrink-0 w-10 h-10">
         <svg viewBox="0 0 40 40" className="-rotate-90 w-10 h-10">
           <circle
@@ -264,6 +263,7 @@ function ScreeningRow({ s, isLatest }: { s: Screening; isLatest: boolean }) {
           {pct}%
         </span>
       </div>
+
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span
@@ -284,6 +284,7 @@ function ScreeningRow({ s, isLatest }: { s: Screening; isLatest: boolean }) {
           {formatShortDate(s.test_taken_on)}
         </p>
       </div>
+
       <svg
         className="w-4 h-4 text-muted flex-shrink-0"
         fill="none"
@@ -293,11 +294,11 @@ function ScreeningRow({ s, isLatest }: { s: Screening; isLatest: boolean }) {
       >
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
       </svg>
-    </div>
+    </Link>
   );
 }
 
-// ── Empty state (unchanged) ────────────────────────────────────────────────
+// ── Empty state ────────────────────────────────────────────────
 function EmptyState() {
   return (
     <div className="text-center py-12 px-6">
@@ -332,13 +333,55 @@ function EmptyState() {
   );
 }
 
-// ── Main dashboard component ───────────────────────────────────────────────
+// ── Main Dashboard ─────────────────────────────────────────────
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [screenings, setScreenings] = useState<Screening[]>([]);
   const [loading, setLoading] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
+
+  const fetchScreenings = async (userId: string) => {
+    // Fetch screenings
+    const { data: screeningsData, error: screeningsError } = await supabase
+      .from("screenings")
+      .select("id, source, test_taken_on, submitted_at")
+      .eq("user_id", userId)
+      .order("test_taken_on", { ascending: false })
+      .order("submitted_at", { ascending: false });
+
+    if (screeningsError) throw screeningsError;
+    if (!screeningsData || screeningsData.length === 0) {
+      setScreenings([]);
+      return;
+    }
+
+    // Fetch results
+    const screeningIds = screeningsData.map((s) => s.id);
+    const { data: resultsData, error: resultsError } = await supabase
+      .from("screening_results")
+      .select("screening_id, risk_score, risk_level, probabilities, breakdown")
+      .in("screening_id", screeningIds);
+
+    if (resultsError) throw resultsError;
+
+    const resultMap = new Map();
+    resultsData?.forEach((r) => {
+      resultMap.set(r.screening_id, {
+        risk_score: r.risk_score,
+        risk_level: r.risk_level as RiskLevel,
+        probabilities: r.probabilities,
+        breakdown: r.breakdown,
+      });
+    });
+
+    const merged: Screening[] = screeningsData.map((s) => ({
+      ...s,
+      screening_results: resultMap.get(s.id) || null,
+    }));
+
+    setScreenings(merged);
+  };
 
   useEffect(() => {
     const init = async () => {
@@ -350,63 +393,9 @@ export default function DashboardPage() {
         return;
       }
       setUser(user);
-
-      // 1. Fetch all screenings first
-      const { data: screeningsData, error: screeningsError } = await supabase
-        .from("screenings")
-        .select("id, source, test_taken_on, submitted_at")
-        .eq("user_id", user.id)
-        .order("test_taken_on", { ascending: false })
-        .order("submitted_at", { ascending: false });
-
-      if (screeningsError) {
-        console.error("Error fetching screenings:", screeningsError);
-        setLoading(false);
-        return;
-      }
-
-      if (!screeningsData || screeningsData.length === 0) {
-        setScreenings([]);
-        setLoading(false);
-        return;
-      }
-
-      // 2. Fetch all screening results for these screening IDs
-      const screeningIds = screeningsData.map((s) => s.id);
-      const { data: resultsData, error: resultsError } = await supabase
-        .from("screening_results")
-        .select(
-          "screening_id, risk_score, risk_level, probabilities, breakdown",
-        )
-        .in("screening_id", screeningIds);
-
-      if (resultsError) {
-        console.error("Error fetching screening results:", resultsError);
-        setLoading(false);
-        return;
-      }
-
-      // 3. Build a map of screening_id -> result
-      const resultMap = new Map();
-      resultsData?.forEach((r) => {
-        resultMap.set(r.screening_id, {
-          risk_score: r.risk_score,
-          risk_level: r.risk_level as RiskLevel,
-          probabilities: r.probabilities,
-          breakdown: r.breakdown,
-        });
-      });
-
-      // 4. Merge screenings with their results
-      const merged: Screening[] = screeningsData.map((s) => ({
-        ...s,
-        screening_results: resultMap.get(s.id) || null,
-      }));
-
-      setScreenings(merged);
+      await fetchScreenings(user.id);
       setLoading(false);
     };
-
     init();
   }, [router]);
 
@@ -438,7 +427,6 @@ export default function DashboardPage() {
   const email = user?.email ?? "";
   const createdAt = user?.created_at ?? "";
 
-  // Compute average risk score (only from screenings that have a result)
   const validScreenings = screenings.filter((s) => s.screening_results);
   const averageRisk =
     validScreenings.length > 0
@@ -452,7 +440,6 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen flex flex-col bg-page">
-      {/* Nav */}
       <nav className="w-full px-6 py-5 border-b border-gray-100/60 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <Logo />
