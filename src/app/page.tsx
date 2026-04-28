@@ -3,6 +3,9 @@ import Link from "next/link";
 import Logo from "@/components/Logo";
 import LogoLoop from "@/components/LogoLoop";
 import SplitText from "@/components/SplitText";
+import { RainbowButton } from "@/components/ui/rainbow-button";
+import { RippleButton } from "@/components/ui/ripple-button";
+import StaggeredMenu from "@/components/StaggeredMenu";
 
 export default function Home() {
   const trustItems = [
@@ -20,21 +23,47 @@ export default function Home() {
     },
   ];
 
+  const menuItems = [
+    { label: "Home", ariaLabel: "Go to home page", link: "/" },
+    { label: "Profile", ariaLabel: "View your profile", link: "/profile" },
+    {
+      label: "History",
+      ariaLabel: "View your screening history",
+      link: "/history",
+    },
+    {
+      label: "How it works",
+      ariaLabel: "How it works",
+      link: "/howitworks",
+    },
+
+    { label: "Privacy", ariaLabel: "Read privacy overview", link: "/privacy" },
+  ];
+
   return (
     <main className="min-h-screen flex flex-col relative overflow-hidden">
       {/* Floating decorative circles */}
-
-      <div className="absolute top-20 -left-16 w-48 h-48 rounded-full bg-mint opacity-60 float" />
-      <div className="absolute top-1/3 -right-20 w-64 h-64 rounded-full bg-trust-light opacity-40 float-delayed" />
-      <div className="absolute bottom-32 left-1/4 w-24 h-24 rounded-full bg-mint opacity-40 float-delayed" />
 
       {/* Nav */}
       <nav className="w-full px-6 py-5 relative z-10">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <Logo size="large" />
-          <div className="hidden sm:flex items-center gap-2 text-xs text-muted">
-            <div className="w-2 h-2 rounded-full bg-primary animate-breathe" />
-            Free &amp; confidential
+          <div className="flex items-center gap-2 text-2xl text-black">
+            <StaggeredMenu
+              position="right"
+              items={menuItems}
+              displaySocials={false}
+              displayItemNumbering={true}
+              menuButtonColor="#1a1d23"
+              openMenuButtonColor="#1a1d23"
+              changeMenuColorOnOpen={true}
+              colors={["#1a1d23", "#1a1d23"]}
+              logoUrl="/favicon.ico"
+              accentColor="#5227FF"
+              isFixed
+              onMenuOpen={() => console.log("Menu opened")}
+              onMenuClose={() => console.log("Menu closed")}
+            />
           </div>
         </div>
       </nav>
@@ -86,18 +115,31 @@ export default function Home() {
             account needed.
           </p>
 
-          <div className="animate-fade-in-up stagger-4 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+          <div className="animate-fade-in-up stagger-4 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6">
             <Link
               href="/screen/non-medical"
-              className="btn-press w-full sm:w-auto px-8 py-3.5 bg-primary hover:bg-primary-dark text-white font-medium rounded-full transition-colors text-center shadow-[0_2px_12px_-2px_rgba(0,119,182,0.35)] hover:shadow-[0_4px_20px_-2px_rgba(0,119,182,0.4)]"
+              className="group w-full sm:w-auto flex flex-col items-center text-center gap-2"
             >
-              Start Free Screening
+              <RippleButton
+                rippleColor="#ADD8E6"
+                className="text-black rounded-xl px-7 py-4 text-base sm:text-lg w-full sm:w-[260px] h-14"
+              >
+                ❤️ Lifestyle Screening
+              </RippleButton>
+              <p className="text-xs sm:text-sm text-muted/80 leading-relaxed max-w-[18rem]">
+                Based on habits, symptoms, and health history
+              </p>
             </Link>
             <Link
               href="/screen/medical"
-              className="btn-press w-full sm:w-auto px-8 py-3.5 bg-trust-light hover:bg-blue-100 text-trust font-medium rounded-full transition-colors text-center"
+              className="group w-full sm:w-auto flex flex-col items-center text-center gap-2"
             >
-              Advanced (with medical data)
+              <RainbowButton className="text-white rounded-xl px-7 py-4 text-base sm:text-lg w-full sm:w-[260px] h-14">
+                🩺 Clinical Screening
+              </RainbowButton>
+              <p className="text-xs sm:text-sm text-muted/80 leading-relaxed max-w-[18rem]">
+                I have lab results (HbA1c, cholesterol, etc.)
+              </p>
             </Link>
           </div>
 
