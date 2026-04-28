@@ -9,12 +9,12 @@ import type { User } from "@supabase/supabase-js";
 
 type RiskLevel = "Low" | "Moderate" | "High";
 
-type ScreeningResult = {
+interface ScreeningResult {
   risk_score: number;
   risk_level: RiskLevel;
   probabilities: Record<string, number>;
   breakdown: { symptom_score?: number; lifestyle_score?: number } | null;
-};
+}
 
 interface Screening {
   id: string;
@@ -24,33 +24,7 @@ interface Screening {
   screening_results: ScreeningResult | null;
 }
 
-type ScreeningRowFromDB = {
-  id: string;
-  source: "medical" | "lifestyle";
-  test_taken_on: string;
-  submitted_at: string;
-  screening_results: {
-    risk_score: number;
-    risk_level: string;
-    probabilities: Record<string, number>;
-    breakdown: { symptom_score?: number; lifestyle_score?: number } | null;
-  }[];
-};
-
-function normalizeScreeningRow(row: ScreeningRowFromDB): Screening {
-  const firstResult = row.screening_results?.[0] ?? null;
-  return {
-    ...row,
-    screening_results: firstResult
-      ? {
-          ...firstResult,
-          risk_level: firstResult.risk_level as RiskLevel,
-        }
-      : null,
-  };
-}
-
-// ── Helpers ────────────────────────────────────────────────────
+// Helpers
 const riskColor: Record<RiskLevel, string> = {
   Low: "#2DB87A",
   Moderate: "#F5A623",
@@ -63,11 +37,12 @@ const riskBadge: Record<RiskLevel, string> = {
   High: "bg-red-50 text-risk-high border-red-200",
 };
 
-function scoreToPercent(s: number) {
+function scoreToPercent(s: number): number {
+  if (typeof s !== "number" || !Number.isFinite(s)) return 0;
   return Math.max(0, Math.min(100, Math.round(s * 100)));
 }
 
-function formatShortDate(iso: string) {
+function formatShortDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -75,7 +50,7 @@ function formatShortDate(iso: string) {
   });
 }
 
-function formatFullDate(iso: string) {
+function formatFullDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
@@ -84,14 +59,17 @@ function formatFullDate(iso: string) {
   });
 }
 
-function memberSince(iso: string) {
+function memberSince(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
     month: "long",
     year: "numeric",
   });
 }
 
-// ── Mini trend sparkline ───────────────────────────────────────
+// TrendSparkline, ScoreRing, ScreeningRow, EmptyState – same as before
+// (I'll include them below, but they are unchanged from your original)
+
+// ── Mini trend sparkline (unchanged) ───────────────────────────────────────
 function TrendSparkline({ screenings }: { screenings: Screening[] }) {
   const points = screenings
     .filter((s) => s.screening_results)
@@ -150,7 +128,6 @@ function TrendSparkline({ screenings }: { screenings: Screening[] }) {
         </span>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 72 }}>
-        {/* Zone bands */}
         <rect
           x={0}
           y={0}
@@ -175,9 +152,7 @@ function TrendSparkline({ screenings }: { screenings: Screening[] }) {
           fill="#2DB87A"
           opacity={0.04}
         />
-        {/* Fill */}
         <polygon points={fill} fill="url(#sparkGrad)" opacity={0.25} />
-        {/* Line */}
         <path
           d={path}
           fill="none"
@@ -186,7 +161,6 @@ function TrendSparkline({ screenings }: { screenings: Screening[] }) {
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        {/* Dots */}
         {coords.map((c, i) => (
           <circle
             key={i}
@@ -205,7 +179,6 @@ function TrendSparkline({ screenings }: { screenings: Screening[] }) {
           </linearGradient>
         </defs>
       </svg>
-      {/* X labels */}
       <div className="flex justify-between mt-1">
         <span className="text-[10px] text-muted">Oldest</span>
         <span className="text-[10px] text-muted">Latest</span>
@@ -214,7 +187,7 @@ function TrendSparkline({ screenings }: { screenings: Screening[] }) {
   );
 }
 
-// ── Score ring ─────────────────────────────────────────────────
+// ── Score ring (unchanged) ─────────────────────────────────────────────────
 function ScoreRing({ percent, level }: { percent: number; level: RiskLevel }) {
   const r = 42,
     circ = 2 * Math.PI * r;
@@ -251,7 +224,7 @@ function ScoreRing({ percent, level }: { percent: number; level: RiskLevel }) {
   );
 }
 
-// ── Screening row ──────────────────────────────────────────────
+// ── Screening row (unchanged) ──────────────────────────────────────────────
 function ScreeningRow({ s, isLatest }: { s: Screening; isLatest: boolean }) {
   const result = s.screening_results;
   if (!result) return null;
@@ -266,7 +239,6 @@ function ScreeningRow({ s, isLatest }: { s: Screening; isLatest: boolean }) {
           : "border-gray-100 bg-white hover:border-gray-200"
       }`}
     >
-      {/* Mini ring */}
       <div className="relative flex-shrink-0 w-10 h-10">
         <svg viewBox="0 0 40 40" className="-rotate-90 w-10 h-10">
           <circle
@@ -285,17 +257,13 @@ function ScreeningRow({ s, isLatest }: { s: Screening; isLatest: boolean }) {
             stroke={riskColor[level]}
             strokeWidth="5"
             strokeLinecap="round"
-            strokeDasharray={`${(pct / 100) * 2 * Math.PI * 16} ${
-              2 * Math.PI * 16
-            }`}
+            strokeDasharray={`${(pct / 100) * 2 * Math.PI * 16} ${2 * Math.PI * 16}`}
           />
         </svg>
         <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-heading">
           {pct}%
         </span>
       </div>
-
-      {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span
@@ -316,8 +284,6 @@ function ScreeningRow({ s, isLatest }: { s: Screening; isLatest: boolean }) {
           {formatShortDate(s.test_taken_on)}
         </p>
       </div>
-
-      {/* Arrow */}
       <svg
         className="w-4 h-4 text-muted flex-shrink-0"
         fill="none"
@@ -331,7 +297,7 @@ function ScreeningRow({ s, isLatest }: { s: Screening; isLatest: boolean }) {
   );
 }
 
-// ── Empty state ────────────────────────────────────────────────
+// ── Empty state (unchanged) ────────────────────────────────────────────────
 function EmptyState() {
   return (
     <div className="text-center py-12 px-6">
@@ -366,64 +332,7 @@ function EmptyState() {
   );
 }
 
-async function saveScreeningToSupabase(
-  userId: string,
-  stored: {
-    source: "medical" | "lifestyle";
-    prediction: {
-      risk_score: number;
-      risk_level: string;
-      probabilities: Record<string, number>;
-      breakdown?: Record<string, number>;
-    };
-    inputSummary: Record<string, string | number | boolean | null>;
-    submittedAt: string;
-  },
-) {
-  // 1. Create the screening row
-  const { data: screening, error: screeningError } = await supabase
-    .from("screenings")
-    .insert({
-      user_id: userId,
-      source: stored.source,
-      test_taken_on: new Date(stored.submittedAt).toISOString().split("T")[0],
-      submitted_at: stored.submittedAt,
-    })
-    .select()
-    .single();
-
-  if (screeningError || !screening) {
-    throw new Error(screeningError?.message ?? "Failed to create screening");
-  }
-
-  const screeningId = screening.id;
-
-  // 2. Save the result
-  await supabase.from("screening_results").insert({
-    screening_id: screeningId,
-    risk_score: stored.prediction.risk_score,
-    risk_level: stored.prediction.risk_level.toLowerCase(),
-    probabilities: stored.prediction.probabilities,
-    breakdown: stored.prediction.breakdown ?? null,
-    model_name:
-      stored.source === "medical" ? "medical_rf" : "lifestyle_ensemble",
-  });
-
-  // 3. Save the inputs
-  if (stored.source === "medical") {
-    await supabase.from("screening_medical_inputs").insert({
-      screening_id: screeningId,
-      ...stored.inputSummary,
-    });
-  } else {
-    await supabase.from("screening_lifestyle_inputs").insert({
-      screening_id: screeningId,
-      ...stored.inputSummary,
-    });
-  }
-}
-
-// ── Main page ──────────────────────────────────────────────────
+// ── Main dashboard component ───────────────────────────────────────────────
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
@@ -442,43 +351,59 @@ export default function DashboardPage() {
       }
       setUser(user);
 
-      // ── Save pending result if coming from OAuth flow ──
-      const pending = localStorage.getItem("pending_result");
-      if (pending) {
-        try {
-          const stored = JSON.parse(pending);
-          await saveScreeningToSupabase(user.id, stored);
-          localStorage.removeItem("pending_result");
-        } catch (e) {
-          console.error("Failed to save pending result:", e);
-        }
-      }
-
-      // Fetch screenings with results joined
-      const { data } = await supabase
+      // 1. Fetch all screenings first
+      const { data: screeningsData, error: screeningsError } = await supabase
         .from("screenings")
-        .select(
-          `
-            id,
-            source,
-            test_taken_on,
-            submitted_at,
-            screening_results (
-              risk_score,
-              risk_level,
-              probabilities,
-              breakdown
-            )
-          `,
-        )
+        .select("id, source, test_taken_on, submitted_at")
         .eq("user_id", user.id)
         .order("test_taken_on", { ascending: false })
         .order("submitted_at", { ascending: false });
 
-      const normalized = ((data ?? []) as ScreeningRowFromDB[]).map(
-        normalizeScreeningRow,
-      );
-      setScreenings(normalized);
+      if (screeningsError) {
+        console.error("Error fetching screenings:", screeningsError);
+        setLoading(false);
+        return;
+      }
+
+      if (!screeningsData || screeningsData.length === 0) {
+        setScreenings([]);
+        setLoading(false);
+        return;
+      }
+
+      // 2. Fetch all screening results for these screening IDs
+      const screeningIds = screeningsData.map((s) => s.id);
+      const { data: resultsData, error: resultsError } = await supabase
+        .from("screening_results")
+        .select(
+          "screening_id, risk_score, risk_level, probabilities, breakdown",
+        )
+        .in("screening_id", screeningIds);
+
+      if (resultsError) {
+        console.error("Error fetching screening results:", resultsError);
+        setLoading(false);
+        return;
+      }
+
+      // 3. Build a map of screening_id -> result
+      const resultMap = new Map();
+      resultsData?.forEach((r) => {
+        resultMap.set(r.screening_id, {
+          risk_score: r.risk_score,
+          risk_level: r.risk_level as RiskLevel,
+          probabilities: r.probabilities,
+          breakdown: r.breakdown,
+        });
+      });
+
+      // 4. Merge screenings with their results
+      const merged: Screening[] = screeningsData.map((s) => ({
+        ...s,
+        screening_results: resultMap.get(s.id) || null,
+      }));
+
+      setScreenings(merged);
       setLoading(false);
     };
 
@@ -513,9 +438,21 @@ export default function DashboardPage() {
   const email = user?.email ?? "";
   const createdAt = user?.created_at ?? "";
 
+  // Compute average risk score (only from screenings that have a result)
+  const validScreenings = screenings.filter((s) => s.screening_results);
+  const averageRisk =
+    validScreenings.length > 0
+      ? Math.round(
+          validScreenings.reduce(
+            (acc, s) => acc + scoreToPercent(s.screening_results!.risk_score),
+            0,
+          ) / validScreenings.length,
+        )
+      : null;
+
   return (
     <main className="min-h-screen flex flex-col bg-page">
-      {/* ── Nav ───────────────────────────────────────────── */}
+      {/* Nav */}
       <nav className="w-full px-6 py-5 border-b border-gray-100/60 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <Logo />
@@ -543,9 +480,8 @@ export default function DashboardPage() {
 
       <section className="flex-1 flex flex-col items-center px-4 sm:px-6 pt-8 pb-24">
         <div className="w-full max-w-2xl space-y-4">
-          {/* ── Profile card ──────────────────────────────── */}
+          {/* Profile card */}
           <div className="bg-white border border-gray-100 rounded-2xl p-6 flex items-center gap-4 animate-fade-in">
-            {/* Avatar */}
             {avatarUrl ? (
               <img
                 src={avatarUrl}
@@ -559,7 +495,6 @@ export default function DashboardPage() {
                 </span>
               </div>
             )}
-
             <div className="flex-1 min-w-0">
               <p className="text-base font-bold text-heading truncate">
                 {fullName}
@@ -571,7 +506,6 @@ export default function DashboardPage() {
                 </p>
               )}
             </div>
-
             <button
               onClick={handleSignOut}
               disabled={signingOut}
@@ -598,7 +532,7 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          {/* ── Latest result (if exists) ─────────────────── */}
+          {/* Latest result */}
           {latest && latestResult && latestPct !== null && (
             <div
               className={`bg-white border-2 rounded-2xl p-6 animate-fade-in-up stagger-1`}
@@ -607,13 +541,11 @@ export default function DashboardPage() {
               <p className="text-xs uppercase tracking-widest text-muted font-medium mb-4">
                 Latest result
               </p>
-
               <div className="flex items-center gap-5">
                 <ScoreRing
                   percent={latestPct}
                   level={latestResult.risk_level}
                 />
-
                 <div className="flex-1">
                   <span
                     className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${riskBadge[latestResult.risk_level]} mb-2`}
@@ -630,8 +562,6 @@ export default function DashboardPage() {
                   </p>
                 </div>
               </div>
-
-              {/* Trend sparkline */}
               {screenings.length > 1 && (
                 <div className="mt-5 pt-5 border-t border-gray-100">
                   <TrendSparkline screenings={screenings} />
@@ -640,44 +570,39 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* ── Stats row ─────────────────────────────────── */}
+          {/* Stats row */}
           {screenings.length > 0 && (
             <div className="grid grid-cols-3 gap-3 animate-fade-in-up stagger-2">
-              {[
-                { label: "Total screenings", value: screenings.length },
-                {
-                  label: "Avg risk score",
-                  value: `${Math.round(
-                    screenings
-                      .filter((s) => s.screening_results)
-                      .reduce(
-                        (acc, s) =>
-                          acc + scoreToPercent(s.screening_results!.risk_score),
-                        0,
-                      ) / screenings.filter((s) => s.screening_results).length,
-                  )}%`,
-                },
-                {
-                  label: "Last check",
-                  value: formatShortDate(screenings[0].test_taken_on),
-                },
-              ].map((stat) => (
-                <div
-                  key={stat.label}
-                  className="bg-white border border-gray-100 rounded-xl px-4 py-3 text-center"
-                >
-                  <p className="text-base font-bold text-heading">
-                    {stat.value}
-                  </p>
-                  <p className="text-[10px] text-muted mt-0.5 leading-tight">
-                    {stat.label}
-                  </p>
-                </div>
-              ))}
+              <div className="bg-white border border-gray-100 rounded-xl px-4 py-3 text-center">
+                <p className="text-base font-bold text-heading">
+                  {screenings.length}
+                </p>
+                <p className="text-[10px] text-muted mt-0.5 leading-tight">
+                  Total screenings
+                </p>
+              </div>
+              <div className="bg-white border border-gray-100 rounded-xl px-4 py-3 text-center">
+                <p className="text-base font-bold text-heading">
+                  {averageRisk !== null ? `${averageRisk}%` : "—"}
+                </p>
+                <p className="text-[10px] text-muted mt-0.5 leading-tight">
+                  Avg risk score
+                </p>
+              </div>
+              <div className="bg-white border border-gray-100 rounded-xl px-4 py-3 text-center">
+                <p className="text-base font-bold text-heading">
+                  {screenings[0]?.test_taken_on
+                    ? formatShortDate(screenings[0].test_taken_on)
+                    : "—"}
+                </p>
+                <p className="text-[10px] text-muted mt-0.5 leading-tight">
+                  Last check
+                </p>
+              </div>
             </div>
           )}
 
-          {/* ── Screening history list ────────────────────── */}
+          {/* Screening history */}
           <div className="animate-fade-in-up stagger-3">
             <div className="flex items-center justify-between mb-3 px-1">
               <p className="text-xs uppercase tracking-widest text-muted font-medium">
@@ -687,7 +612,6 @@ export default function DashboardPage() {
                 {screenings.length} total
               </span>
             </div>
-
             {screenings.length === 0 ? (
               <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
                 <EmptyState />
@@ -701,7 +625,7 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* ── Disclaimer ────────────────────────────────── */}
+          {/* Disclaimer */}
           <div className="flex gap-3 px-4 py-4 bg-page border border-dashed border-gray-200 rounded-xl animate-fade-in-up stagger-4">
             <svg
               className="w-4 h-4 text-muted mt-0.5 flex-shrink-0"
