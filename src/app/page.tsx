@@ -1,9 +1,25 @@
 "use client";
 import Link from "next/link";
 import Logo from "@/components/Logo";
+import LogoLoop from "@/components/LogoLoop";
 import SplitText from "@/components/SplitText";
 
 export default function Home() {
+  const trustItems = [
+    {
+      node: "Developed with healthcare professionals",
+    },
+    {
+      node: "Model accuracy: 98%",
+    },
+    {
+      node: "Powered by machine learning trained on medical datasets",
+    },
+    {
+      node: "With Gemini AI analysis",
+    },
+  ];
+
   return (
     <main className="min-h-screen flex flex-col relative overflow-hidden">
       {/* Floating decorative circles */}
@@ -25,7 +41,6 @@ export default function Home() {
 
       {/* Hero */}
       <section className="flex-1 flex items-center justify-center px-6 pb-20 relative z-10">
-        
         <div className="max-w-xl w-full text-center">
           {/* Animated icon */}
           <div className="animate-fade-in-up stagger-1 mx-auto mb-10 relative w-24 h-24">
@@ -90,26 +105,17 @@ export default function Home() {
             Takes ~2 minutes. No signup required.
           </div>
 
-          <div className="animate-fade-in-up stagger-5 mt-10 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-muted">
-            <div className="flex items-start gap-2">
-              <span className="mt-1 h-2 w-2 rounded-full bg-primary" />
-              Developed with healthcare professionals
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="mt-1 h-2 w-2 rounded-full bg-primary" />
-              Model accuracy: 98%
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="mt-1 h-2 w-2 rounded-full bg-primary" />
-              Powered by machine learning trained on medical datasets
-            </div>
-            <Link
-              href="/methodology"
-              className="flex items-start gap-2 text-primary hover:text-primary-dark"
-            >
-              <span className="mt-1 h-2 w-2 rounded-full bg-primary" />
-              Methodology and datasets
-            </Link>
+          <div className="animate-fade-in-up stagger-5 mt-10">
+            <LogoLoop
+              logos={trustItems}
+              ariaLabel="Trust signals"
+              speed={40}
+              gap={28}
+              logoHeight={12}
+              pauseOnHover
+              fadeOut
+              className="text-xs text-muted"
+            />
           </div>
 
           <div className="animate-fade-in-up stagger-6 mt-6 rounded-xl border border-amber-200/70 bg-amber-50 px-4 py-3 text-sm text-amber-900">
