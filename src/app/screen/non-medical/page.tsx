@@ -17,14 +17,33 @@ const FASTAPI_URL =
   process.env.NEXT_PUBLIC_FASTAPI_URL ?? "http://127.0.0.1:8000";
 
 interface FormData {
+  // Demographics
   age: string;
   gender: string;
   weight: string;
   height: string;
-  familyHistory: string;
-  physicalActivity: string;
-  smoking: string;
-  diet: string;
+  // CDC lifestyle features
+  high_bp: string;
+  high_chol: string;
+  smoker: string;
+  heavy_alcohol: string;
+  physical_activity: string;
+  stroke: string;
+  heart_disease: string;
+  // UCI symptom features
+  polyuria: string;
+  polydipsia: string;
+  sudden_weight_loss: string;
+  weakness: string;
+  polyphagia: string;
+  genital_thrush: string;
+  visual_blurring: string;
+  itching: string;
+  irritability: string;
+  delayed_healing: string;
+  partial_paresis: string;
+  muscle_stiffness: string;
+  alopecia: string;
 }
 
 const INITIAL: FormData = {
@@ -32,13 +51,30 @@ const INITIAL: FormData = {
   gender: "",
   weight: "",
   height: "",
-  familyHistory: "",
-  physicalActivity: "",
-  smoking: "",
-  diet: "",
+  high_bp: "",
+  high_chol: "",
+  smoker: "",
+  heavy_alcohol: "",
+  physical_activity: "",
+  stroke: "",
+  heart_disease: "",
+  polyuria: "",
+  polydipsia: "",
+  sudden_weight_loss: "",
+  weakness: "",
+  polyphagia: "",
+  genital_thrush: "",
+  visual_blurring: "",
+  itching: "",
+  irritability: "",
+  delayed_healing: "",
+  partial_paresis: "",
+  muscle_stiffness: "",
+  alopecia: "",
 };
 
 const steps = [
+  // ── Demographics ──────────────────────────────────────────
   {
     key: "age",
     label: "How old are you?",
@@ -56,95 +92,199 @@ const steps = [
   {
     key: "weight",
     label: "What is your weight?",
-    sublabel: "In kilograms",
+    sublabel: "In kilograms — used to calculate your BMI",
     type: "number",
     placeholder: "e.g. 72",
   },
   {
     key: "height",
     label: "What is your height?",
-    sublabel: "In centimeters",
+    sublabel: "In centimeters — used to calculate your BMI",
     type: "number",
     placeholder: "e.g. 170",
   },
+  // ── CDC Lifestyle features ─────────────────────────────────
   {
-    key: "familyHistory",
-    label: "Family history of diabetes?",
-    sublabel: "Has a close relative been diagnosed?",
+    key: "high_bp",
+    label: "Have you been told you have high blood pressure?",
+    sublabel: "Diagnosed by a doctor or nurse",
     type: "select",
-    options: ["Yes", "No", "Not sure"],
+    options: ["Yes", "No"],
   },
   {
-    key: "physicalActivity",
-    label: "How active are you?",
-    sublabel: "Your typical weekly activity level",
+    key: "high_chol",
+    label: "Have you been told you have high cholesterol?",
+    sublabel: "Diagnosed by a doctor or nurse",
     type: "select",
-    options: [
-      "Sedentary",
-      "Lightly active",
-      "Moderately active",
-      "Very active",
-    ],
+    options: ["Yes", "No"],
   },
   {
-    key: "smoking",
-    label: "Do you smoke?",
-    sublabel: "Current smoking status",
+    key: "smoker",
+    label: "Have you smoked at least 100 cigarettes in your lifetime?",
+    sublabel: "This includes cigars and other tobacco products",
     type: "select",
-    options: ["Yes", "No", "Former smoker"],
+    options: ["Yes", "No"],
   },
   {
-    key: "diet",
-    label: "How would you describe your diet?",
-    sublabel: "Overall eating habits",
+    key: "heavy_alcohol",
+    label: "Do you drink heavily?",
+    sublabel: "More than 14 drinks/week for men, 7 for women",
     type: "select",
-    options: ["Mostly healthy", "Mixed", "Mostly unhealthy"],
+    options: ["Yes", "No"],
+  },
+  {
+    key: "physical_activity",
+    label: "Have you done physical activity in the past 30 days?",
+    sublabel: "Any exercise outside of your regular job",
+    type: "select",
+    options: ["Yes", "No"],
+  },
+  {
+    key: "stroke",
+    label: "Have you ever had a stroke?",
+    sublabel: "Diagnosed by a doctor",
+    type: "select",
+    options: ["Yes", "No"],
+  },
+  {
+    key: "heart_disease",
+    label: "Have you had coronary heart disease or a heart attack?",
+    sublabel: "Diagnosed by a doctor",
+    type: "select",
+    options: ["Yes", "No"],
+  },
+  // ── UCI Symptom features ───────────────────────────────────
+  {
+    key: "polyuria",
+    label: "Do you urinate more frequently than usual?",
+    sublabel: "Especially at night or in large amounts",
+    type: "select",
+    options: ["Yes", "No"],
+  },
+  {
+    key: "polydipsia",
+    label: "Do you feel excessively thirsty?",
+    sublabel: "Even after drinking water",
+    type: "select",
+    options: ["Yes", "No"],
+  },
+  {
+    key: "sudden_weight_loss",
+    label: "Have you experienced sudden unexplained weight loss?",
+    sublabel: "Without changes in diet or exercise",
+    type: "select",
+    options: ["Yes", "No"],
+  },
+  {
+    key: "weakness",
+    label: "Do you feel unusually weak or fatigued?",
+    sublabel: "Persistent tiredness that doesn't go away with rest",
+    type: "select",
+    options: ["Yes", "No"],
+  },
+  {
+    key: "polyphagia",
+    label: "Do you feel excessively hungry?",
+    sublabel: "Even after eating a full meal",
+    type: "select",
+    options: ["Yes", "No"],
+  },
+  {
+    key: "genital_thrush",
+    label: "Have you had recurring genital thrush?",
+    sublabel: "Fungal infections in the genital area",
+    type: "select",
+    options: ["Yes", "No"],
+  },
+  {
+    key: "visual_blurring",
+    label: "Do you experience blurred vision?",
+    sublabel: "Sudden or gradual blurring",
+    type: "select",
+    options: ["Yes", "No"],
+  },
+  {
+    key: "itching",
+    label: "Do you have persistent itching?",
+    sublabel: "Especially on the skin",
+    type: "select",
+    options: ["Yes", "No"],
+  },
+  {
+    key: "irritability",
+    label: "Do you experience unusual irritability?",
+    sublabel: "Mood changes not explained by stress",
+    type: "select",
+    options: ["Yes", "No"],
+  },
+  {
+    key: "delayed_healing",
+    label: "Do cuts or wounds take longer than usual to heal?",
+    sublabel: "Small wounds that take weeks to heal",
+    type: "select",
+    options: ["Yes", "No"],
+  },
+  {
+    key: "partial_paresis",
+    label: "Do you experience muscle weakness or partial numbness?",
+    sublabel: "In arms, legs, or face",
+    type: "select",
+    options: ["Yes", "No"],
+  },
+  {
+    key: "muscle_stiffness",
+    label: "Do you have muscle stiffness or cramps?",
+    sublabel: "Especially in the legs",
+    type: "select",
+    options: ["Yes", "No"],
+  },
+  {
+    key: "alopecia",
+    label: "Have you experienced unusual hair loss?",
+    sublabel: "More than normal shedding",
+    type: "select",
+    options: ["Yes", "No"],
   },
 ] as const;
 
+// Clean 1:1 mapping — no guesswork
 function mapToLifestylePayload(data: FormData): LifestyleRequestPayload {
-  const age = Number.parseFloat(data.age) || 0;
-  const weight = Number.parseFloat(data.weight) || 0;
-  const heightCm = Number.parseFloat(data.height) || 0;
-  const heightMeters = heightCm > 0 ? heightCm / 100 : 0;
-  const bmi =
-    heightMeters > 0
-      ? Number((weight / (heightMeters * heightMeters)).toFixed(2))
-      : 0;
+  const age = parseFloat(data.age) || 0;
+  const weight = parseFloat(data.weight) || 0;
+  const heightCm = parseFloat(data.height) || 0;
+  const heightM = heightCm > 0 ? heightCm / 100 : 1;
+  const bmi = parseFloat((weight / (heightM * heightM)).toFixed(2));
 
-  const familyHistory = data.familyHistory === "Yes";
-  const isActive =
-    data.physicalActivity === "Moderately active" ||
-    data.physicalActivity === "Very active";
-  const sedentary = data.physicalActivity === "Sedentary";
-  const unhealthyDiet = data.diet === "Mostly unhealthy";
-  const isSmoker = data.smoking === "Yes";
+  const yn = (val: string) => (val === "Yes" ? 1 : 0);
 
   return {
     gender: data.gender,
     age,
-    polyuria: 0,
-    polydipsia: 0,
-    sudden_weight_loss: 0,
-    weakness: sedentary ? 1 : 0,
-    polyphagia: unhealthyDiet ? 1 : 0,
-    genital_thrush: 0,
-    visual_blurring: 0,
-    itching: 0,
-    irritability: sedentary ? 1 : 0,
-    delayed_healing: familyHistory ? 1 : 0,
-    partial_paresis: 0,
-    muscle_stiffness: sedentary ? 1 : 0,
-    alopecia: 0,
-    obesity: bmi >= 30 ? 1 : 0,
-    high_bp: familyHistory && age >= 45 ? 1 : 0,
-    high_chol: unhealthyDiet ? 1 : 0,
-    smoker: isSmoker ? 1 : 0,
-    stroke: 0,
-    heart_disease: familyHistory && age >= 55 ? 1 : 0,
-    physical_activity: isActive ? 1 : 0,
-    heavy_alcohol: 0,
     bmi,
+    // CDC features — direct from form answers
+    high_bp: yn(data.high_bp),
+    high_chol: yn(data.high_chol),
+    smoker: yn(data.smoker),
+    heavy_alcohol: yn(data.heavy_alcohol),
+    physical_activity: yn(data.physical_activity),
+    stroke: yn(data.stroke),
+    heart_disease: yn(data.heart_disease),
+    // UCI features — direct from form answers
+    polyuria: yn(data.polyuria),
+    polydipsia: yn(data.polydipsia),
+    sudden_weight_loss: yn(data.sudden_weight_loss),
+    weakness: yn(data.weakness),
+    polyphagia: yn(data.polyphagia),
+    genital_thrush: yn(data.genital_thrush),
+    visual_blurring: yn(data.visual_blurring),
+    itching: yn(data.itching),
+    irritability: yn(data.irritability),
+    delayed_healing: yn(data.delayed_healing),
+    partial_paresis: yn(data.partial_paresis),
+    muscle_stiffness: yn(data.muscle_stiffness),
+    alopecia: yn(data.alopecia),
+    // Obesity auto-calculated from BMI — not asked separately
+    obesity: bmi >= 30 ? 1 : 0,
   };
 }
 
@@ -155,7 +295,6 @@ export default function NonMedicalScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const current = steps[step];
-
   const value = data[current.key as keyof FormData];
   const canNext = value.trim() !== "";
 
@@ -192,10 +331,6 @@ export default function NonMedicalScreen() {
           age: payload.age,
           gender: payload.gender,
           bmi: payload.bmi,
-          family_history: data.familyHistory,
-          activity: data.physicalActivity,
-          smoking: data.smoking,
-          diet: data.diet,
         },
         submittedAt: new Date().toISOString(),
       };
@@ -203,11 +338,11 @@ export default function NonMedicalScreen() {
       sessionStorage.setItem(RESULT_STORAGE_KEY, JSON.stringify(stored));
       router.push(`/result?risk=${toRiskKey(prediction.risk_level)}`);
     } catch (error) {
-      const message =
+      setSubmitError(
         error instanceof Error
           ? error.message
-          : "Could not run lifestyle screening right now.";
-      setSubmitError(message);
+          : "Could not run lifestyle screening right now.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -222,13 +357,10 @@ export default function NonMedicalScreen() {
     setSubmitError("");
   }
 
-  // Enter key to advance
   useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Enter") {
-        void handleNext();
-      }
-    }
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Enter") void handleNext();
+    };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [handleNext]);
@@ -239,7 +371,7 @@ export default function NonMedicalScreen() {
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <Logo />
           <span className="text-xs text-muted font-medium">
-            Non-medical screening
+            Lifestyle screening · Step {step + 1} of {steps.length}
           </span>
         </div>
       </nav>
@@ -261,7 +393,9 @@ export default function NonMedicalScreen() {
                   inputMode="numeric"
                   value={value}
                   onChange={(e) => setValue(e.target.value)}
-                  placeholder={current.placeholder}
+                  placeholder={
+                    "placeholder" in current ? current.placeholder : ""
+                  }
                   className="w-full px-5 py-4 rounded-xl border border-gray-200 text-lg bg-page/50 placeholder:text-muted/40 transition-all duration-200"
                   autoFocus
                 />
@@ -269,37 +403,38 @@ export default function NonMedicalScreen() {
 
               {current.type === "select" && (
                 <div className="flex flex-col gap-2.5">
-                  {current.options.map((opt) => {
-                    const selected = value === opt;
-                    return (
-                      <button
-                        key={opt}
-                        onClick={() => setValue(opt)}
-                        className={`option-card w-full text-left px-5 py-4 rounded-xl border flex items-center justify-between ${
-                          selected
-                            ? "option-selected border-primary bg-mint/60 text-primary font-medium"
-                            : "border-gray-200 hover:border-gray-300 text-heading bg-card"
-                        }`}
-                      >
-                        <span>{opt}</span>
-                        {selected && (
-                          <svg
-                            className="w-5 h-5 text-primary flex-shrink-0 animate-scale-in"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth={2.5}
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
-                        )}
-                      </button>
-                    );
-                  })}
+                  {"options" in current &&
+                    current.options.map((opt) => {
+                      const selected = value === opt;
+                      return (
+                        <button
+                          key={opt}
+                          onClick={() => setValue(opt)}
+                          className={`option-card w-full text-left px-5 py-4 rounded-xl border flex items-center justify-between ${
+                            selected
+                              ? "option-selected border-primary bg-mint/60 text-primary font-medium"
+                              : "border-gray-200 hover:border-gray-300 text-heading bg-card"
+                          }`}
+                        >
+                          <span>{opt}</span>
+                          {selected && (
+                            <svg
+                              className="w-5 h-5 text-primary flex-shrink-0 animate-scale-in"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth={2.5}
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M5 13l4 4L19 7"
+                              />
+                            </svg>
+                          )}
+                        </button>
+                      );
+                    })}
                 </div>
               )}
             </StepWrapper>
@@ -325,10 +460,9 @@ export default function NonMedicalScreen() {
                 </svg>
                 Back
               </button>
+
               <button
-                onClick={() => {
-                  void handleNext();
-                }}
+                onClick={() => void handleNext()}
                 disabled={!canNext || isSubmitting}
                 className="btn-press group flex items-center gap-1.5 px-8 py-2.5 bg-primary hover:bg-primary-dark text-white font-medium rounded-full transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_2px_8px_-2px_rgba(0,119,182,0.3)]"
               >
@@ -359,7 +493,6 @@ export default function NonMedicalScreen() {
               </p>
             )}
 
-            {/* Keyboard hint */}
             {canNext && current.type === "number" && (
               <p className="text-center text-xs text-muted/50 mt-4 animate-fade-in">
                 Press{" "}
