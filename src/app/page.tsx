@@ -23,23 +23,6 @@ export default function Home() {
     },
   ];
 
-  const menuItems = [
-    { label: "Home", ariaLabel: "Go to home page", link: "/" },
-    { label: "Profile", ariaLabel: "View your profile", link: "/profile" },
-    {
-      label: "History",
-      ariaLabel: "View your screening history",
-      link: "/history",
-    },
-    {
-      label: "How it works",
-      ariaLabel: "How it works",
-      link: "/howitworks",
-    },
-
-    { label: "Privacy", ariaLabel: "Read privacy overview", link: "/privacy" },
-  ];
-
   return (
     <main className="min-h-screen flex flex-col relative overflow-hidden">
       {/* Floating decorative circles */}
@@ -48,23 +31,6 @@ export default function Home() {
       <nav className="w-full px-6 py-5 relative z-10">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <Logo size="large" />
-          <div className="flex items-center gap-2 text-2xl text-black">
-            <StaggeredMenu
-              position="right"
-              items={menuItems}
-              displaySocials={false}
-              displayItemNumbering={true}
-              menuButtonColor="#1a1d23"
-              openMenuButtonColor="#1a1d23"
-              changeMenuColorOnOpen={true}
-              colors={["#1a1d23", "#1a1d23"]}
-              logoUrl="/favicon.ico"
-              accentColor="#5227FF"
-              isFixed
-              onMenuOpen={() => console.log("Menu opened")}
-              onMenuClose={() => console.log("Menu closed")}
-            />
-          </div>
         </div>
       </nav>
 
