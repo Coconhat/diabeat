@@ -25,8 +25,6 @@ export default function Home() {
 
   return (
     <main className="min-h-screen flex flex-col relative overflow-hidden">
-      {/* Floating decorative circles */}
-
       {/* Nav */}
       <nav className="w-full px-6 py-5 relative z-10">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
