@@ -76,7 +76,7 @@ export type PredictionResult = MedicalPrediction | LifestylePrediction;
 export interface StoredResult {
   source: "medical" | "lifestyle";
   prediction: PredictionResult;
-  inputSummary: Record<string, string | number>;
+  inputSummary: Record<string, string | number | boolean | null>;
   submittedAt: string;
 }
 

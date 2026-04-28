@@ -14,7 +14,7 @@ import {
   toRiskKey,
 } from "@/lib/prediction";
 import { supabase } from "@/lib/supabase";
-// import { supabase } from "@/lib/supabase"; // uncomment when Supabase is wired
+import { saveScreeningToSupabase } from "@/lib/saveScreening";
 
 // ── Risk config ────────────────────────────────────────────────
 const riskConfig: Record<
@@ -372,9 +372,67 @@ function ResultContent() {
   const [insightWarning, setInsightWarning] = useState("");
   const [isInsightLoading, setIsInsightLoading] = useState(false);
 
-  // TODO: replace with real Supabase auth check
-  const [isSignedIn] = useState(false);
   const [signingIn, setSigningIn] = useState(false);
+  const [isSignedIn, setIsSignedIn] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [saveStatus, setSaveStatus] = useState<
+    "idle" | "saving" | "saved" | "error"
+  >("idle");
+
+  useEffect(() => {
+    if (!storedResult || !isSignedIn || authLoading) return;
+    if (saveStatus !== "idle") return; // don't save twice
+
+    const save = async () => {
+      setSaveStatus("saving");
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return;
+
+        await saveScreeningToSupabase(user.id, {
+          source: storedResult.source,
+          prediction: {
+            risk_score: storedResult.prediction.risk_score,
+            risk_level: storedResult.prediction.risk_level,
+            probabilities: storedResult.prediction.probabilities,
+            breakdown: isLifestylePrediction(storedResult.prediction)
+              ? storedResult.prediction.breakdown
+              : undefined,
+          },
+          inputSummary: storedResult.inputSummary as Record<
+            string,
+            string | number | boolean | null
+          >,
+          submittedAt: storedResult.submittedAt,
+        });
+
+        setSaveStatus("saved");
+      } catch (e) {
+        console.error("Auto-save failed:", e);
+        setSaveStatus("error");
+      }
+    };
+
+    void save();
+  }, [storedResult, isSignedIn, authLoading]); // eslint-disable-line
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setIsSignedIn(!!data.user);
+      setAuthLoading(false);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_e, session) => {
+        setIsSignedIn(!!session?.user);
+        setAuthLoading(false);
+      },
+    );
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     const raw = sessionStorage.getItem(RESULT_STORAGE_KEY);
@@ -444,7 +502,7 @@ function ResultContent() {
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/result/save`,
+        redirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
       },
     });
   };
@@ -671,8 +729,7 @@ function ResultContent() {
             )}
           </div>
 
-          {/* Gate overlay — shown only when not signed in */}
-          {!isSignedIn && (
+          {!authLoading && !isSignedIn && (
             <SignInGate onSignIn={handleSignIn} signingIn={signingIn} />
           )}
         </div>
@@ -701,6 +758,50 @@ function ResultContent() {
           </p>
         </div>
 
+        {/* Save status indicator */}
+        {isSignedIn && (
+          <div className="flex items-center justify-end gap-1.5 px-1 -mt-2 animate-fade-in">
+            {saveStatus === "saving" && (
+              <>
+                <div className="w-3 h-3 border border-muted border-t-transparent rounded-full animate-spin" />
+                <span className="text-[11px] text-muted">
+                  Saving to history...
+                </span>
+              </>
+            )}
+            {saveStatus === "saved" && (
+              <>
+                <svg
+                  className="w-3.5 h-3.5 text-risk-low"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+                <span className="text-[11px] text-risk-low font-medium">
+                  Saved to history
+                </span>
+                <Link
+                  href="/dashboard"
+                  className="text-[11px] text-primary font-semibold underline ml-1"
+                >
+                  View →
+                </Link>
+              </>
+            )}
+            {saveStatus === "error" && (
+              <span className="text-[11px] text-risk-high">
+                Could not save — try again later
+              </span>
+            )}
+          </div>
+        )}
         {/* ── Start over ──────────────────────────────────── */}
         <div className="animate-fade-in-up stagger-4">
           <Link
@@ -736,7 +837,7 @@ export default function ResultPage() {
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <Logo />
           <Link
-            href="/history"
+            href="/dashboard"
             className="flex items-center gap-1.5 text-xs text-muted hover:text-heading transition-colors font-medium"
           >
             <svg

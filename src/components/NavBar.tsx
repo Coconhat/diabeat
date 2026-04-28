@@ -3,18 +3,12 @@ import StaggeredMenu from "./StaggeredMenu";
 
 const menuItems = [
   { label: "Home", ariaLabel: "Go to home page", link: "/" },
-  { label: "Profile", ariaLabel: "View your profile", link: "/profile" },
-  {
-    label: "History",
-    ariaLabel: "View your screening history",
-    link: "/history",
-  },
+  { label: "Profile", ariaLabel: "View your profile", link: "/dashboard" },
   {
     label: "How it works",
     ariaLabel: "How it works",
     link: "/howitworks",
   },
-
   { label: "Privacy", ariaLabel: "Read privacy overview", link: "/privacy" },
 ];
 

@@ -191,13 +191,10 @@ export default function MedicalScreen() {
       const stored: StoredResult = {
         source: "medical",
         prediction,
-        inputSummary: {
-          age: payload.age,
-          gender: data.gender,
-          bmi: payload.bmi,
-          hba1c: payload.hba1c,
-          chol: payload.chol,
-        },
+        inputSummary: payload as Record<
+          string,
+          string | number | boolean | null
+        >,
         submittedAt: new Date().toISOString(),
       };
 

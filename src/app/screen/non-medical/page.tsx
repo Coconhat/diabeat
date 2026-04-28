@@ -327,11 +327,10 @@ export default function NonMedicalScreen() {
       const stored: StoredResult = {
         source: "lifestyle",
         prediction,
-        inputSummary: {
-          age: payload.age,
-          gender: payload.gender,
-          bmi: payload.bmi,
-        },
+        inputSummary: payload as Record<
+          string,
+          string | number | boolean | null
+        >,
         submittedAt: new Date().toISOString(),
       };
 
