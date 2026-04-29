@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { z } from "zod";
 import Logo from "@/components/Logo";
 import ProgressBar from "@/components/ProgressBar";
 import StepWrapper from "@/components/StepWrapper";
@@ -29,6 +30,43 @@ interface FormData {
   vldl: string;
   bmi: string;
 }
+
+// ── Zod schemas for validation ─────────────────────────────────
+const positiveNumber = (min: number, max: number) =>
+  z
+    .number()
+    .finite()
+    .positive()
+    .min(min, { message: `Must be at least ${min}` })
+    .max(max, { message: `Must be at most ${max}` });
+
+const medicalDataSchema = z.object({
+  gender: z.enum(["M", "F"]),
+  age: positiveNumber(1, 99), // 1–99 years
+  urea: positiveNumber(0.5, 100), // mmol/L (severe kidney failure can exceed 50)
+  cr: positiveNumber(5, 2000), // μmol/L (ESRD can be very high)
+  hba1c: positiveNumber(3, 20), // % (severe diabetes up to 15+)
+  chol: positiveNumber(1, 30), // mmol/L (familial hypercholesterolemia)
+  tg: positiveNumber(0.1, 30), // mmol/L (severe hypertriglyceridemia)
+  hdl: positiveNumber(0.1, 5), // mmol/L (very low is possible)
+  ldl: positiveNumber(0.1, 20), // mmol/L
+  vldl: positiveNumber(0.1, 10), // mmol/L
+  bmi: positiveNumber(10, 70), // kg/m² (severe obesity or underweight)
+});
+
+// Step validation (same permissive ranges)
+const stepSchemas: Record<string, z.ZodSchema> = {
+  age: positiveNumber(1, 120),
+  urea: positiveNumber(0.5, 100),
+  cr: positiveNumber(5, 2000),
+  hba1c: positiveNumber(3, 20),
+  chol: positiveNumber(1, 30),
+  tg: positiveNumber(0.1, 30),
+  hdl: positiveNumber(0.1, 5),
+  ldl: positiveNumber(0.1, 20),
+  vldl: positiveNumber(0.1, 10),
+  bmi: positiveNumber(10, 70),
+};
 
 const INITIAL: FormData = {
   age: "",
@@ -75,7 +113,7 @@ const steps = [
     sublabel: "Serum creatinine level",
     type: "number",
     placeholder: "e.g. 80",
-    unit: "\u03BCmol/L",
+    unit: "μmol/L",
   },
   {
     key: "hba1c",
@@ -128,10 +166,10 @@ const steps = [
   {
     key: "bmi",
     label: "Body Mass Index (BMI)",
-    sublabel: "Weight (kg) / Height (m)\u00B2",
+    sublabel: "Weight (kg) / Height (m)²",
     type: "number",
     placeholder: "e.g. 24.5",
-    unit: "kg/m\u00B2",
+    unit: "kg/m²",
   },
 ] as const;
 
@@ -139,39 +177,73 @@ export default function MedicalScreen() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [data, setData] = useState<FormData>(INITIAL);
+  const [fieldError, setFieldError] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const current = steps[step];
 
-  const value = data[current.key as keyof FormData];
-  const canNext = value.trim() !== "";
+  const rawValue = data[current.key as keyof FormData];
+  const canNext = rawValue.trim() !== "";
+
+  // Validate current field on value change
+  useEffect(() => {
+    if (!canNext) {
+      setFieldError("");
+      return;
+    }
+    const schema = stepSchemas[current.key];
+    if (schema && current.type === "number") {
+      const num = Number.parseFloat(rawValue);
+      const result = schema.safeParse(num);
+      if (!result.success) {
+        setFieldError(result.error.errors[0].message);
+      } else {
+        setFieldError("");
+      }
+    } else if (current.key === "gender") {
+      if (rawValue !== "Male" && rawValue !== "Female") {
+        setFieldError("Please select a gender");
+      } else {
+        setFieldError("");
+      }
+    } else {
+      setFieldError("");
+    }
+  }, [rawValue, current.key, current.type, canNext]);
 
   const handleNext = useCallback(async () => {
     if (!canNext || isSubmitting) return;
+    if (fieldError) return; // don't proceed if current field invalid
 
     if (step < steps.length - 1) {
       setStep(step + 1);
       return;
     }
 
-    const toNumber = (value: string) => {
-      const parsed = Number.parseFloat(value);
-      return Number.isFinite(parsed) ? parsed : 0;
+    // ---- Final submission: validate all fields ----
+    const parsed = {
+      gender: data.gender === "Female" ? "F" : "M",
+      age: Number.parseFloat(data.age),
+      urea: Number.parseFloat(data.urea),
+      cr: Number.parseFloat(data.cr),
+      hba1c: Number.parseFloat(data.hba1c),
+      chol: Number.parseFloat(data.chol),
+      tg: Number.parseFloat(data.tg),
+      hdl: Number.parseFloat(data.hdl),
+      ldl: Number.parseFloat(data.ldl),
+      vldl: Number.parseFloat(data.vldl),
+      bmi: Number.parseFloat(data.bmi),
     };
 
-    const payload: MedicalRequestPayload = {
-      gender: data.gender === "Female" ? "F" : "M",
-      age: toNumber(data.age),
-      urea: toNumber(data.urea),
-      cr: toNumber(data.cr),
-      hba1c: toNumber(data.hba1c),
-      chol: toNumber(data.chol),
-      tg: toNumber(data.tg),
-      hdl: toNumber(data.hdl),
-      ldl: toNumber(data.ldl),
-      vldl: toNumber(data.vldl),
-      bmi: toNumber(data.bmi),
-    };
+    const validation = medicalDataSchema.safeParse(parsed);
+    if (!validation.success) {
+      // show first error
+      const firstError = validation.error.errors[0];
+      setSubmitError(`${firstError.path}: ${firstError.message}`);
+      return;
+    }
+
+    const payload: MedicalRequestPayload = parsed;
 
     const inputSummary: Record<string, string | number | boolean | null> = {
       gender: payload.gender,
@@ -220,7 +292,7 @@ export default function MedicalScreen() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [canNext, data, isSubmitting, router, step]);
+  }, [canNext, fieldError, isSubmitting, step, data, router]);
 
   function handleBack() {
     if (step > 0) setStep(step - 1);
@@ -231,16 +303,16 @@ export default function MedicalScreen() {
     setSubmitError("");
   }
 
-  // Enter key to advance
+  // Enter key behaviour: only advance if field is valid and not submitting
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Enter") {
+      if (e.key === "Enter" && canNext && !fieldError && !isSubmitting) {
         void handleNext();
       }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [handleNext]);
+  }, [canNext, fieldError, isSubmitting, handleNext]);
 
   return (
     <main className="min-h-screen flex flex-col">
@@ -269,10 +341,14 @@ export default function MedicalScreen() {
                     key={current.key}
                     type="number"
                     inputMode="decimal"
-                    value={value}
+                    value={rawValue}
                     onChange={(e) => setValue(e.target.value)}
                     placeholder={current.placeholder}
-                    className="w-full px-5 py-4 rounded-xl border border-gray-200 text-lg bg-page/50 placeholder:text-muted/40 transition-all duration-200 pr-24"
+                    className={`w-full px-5 py-4 rounded-xl border text-lg bg-page/50 placeholder:text-muted/40 transition-all duration-200 pr-24 ${
+                      fieldError
+                        ? "border-red-300 focus:border-red-500 focus:ring-red-100"
+                        : "border-gray-200 focus:border-primary"
+                    }`}
                     autoFocus
                   />
                   {current.unit && (
@@ -286,7 +362,7 @@ export default function MedicalScreen() {
               {current.type === "select" && (
                 <div className="flex flex-col gap-2.5">
                   {current.options.map((opt) => {
-                    const selected = value === opt;
+                    const selected = rawValue === opt;
                     return (
                       <button
                         key={opt}
@@ -318,6 +394,11 @@ export default function MedicalScreen() {
                   })}
                 </div>
               )}
+
+              {/* Error message for current field */}
+              {fieldError && (
+                <p className="mt-2 text-sm text-red-500">{fieldError}</p>
+              )}
             </StepWrapper>
 
             <div className="flex items-center justify-between mt-10">
@@ -345,7 +426,7 @@ export default function MedicalScreen() {
                 onClick={() => {
                   void handleNext();
                 }}
-                disabled={!canNext || isSubmitting}
+                disabled={!canNext || !!fieldError || isSubmitting}
                 className="btn-press group flex items-center gap-1.5 px-8 py-2.5 bg-primary hover:bg-primary-dark text-white font-medium rounded-full transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_2px_8px_-2px_rgba(0,119,182,0.3)]"
               >
                 {isSubmitting
@@ -375,8 +456,8 @@ export default function MedicalScreen() {
               </p>
             )}
 
-            {/* Keyboard hint */}
-            {canNext && current.type === "number" && (
+            {/* Keyboard hint (only when field is valid) */}
+            {canNext && !fieldError && current.type === "number" && (
               <p className="text-center text-xs text-muted/50 mt-4 animate-fade-in">
                 Press{" "}
                 <kbd className="px-1.5 py-0.5 bg-page rounded text-[10px] font-mono border border-gray-200">
