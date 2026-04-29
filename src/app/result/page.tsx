@@ -381,7 +381,8 @@ function ResultContent() {
 
   useEffect(() => {
     if (!storedResult || !isSignedIn || authLoading) return;
-    if (saveStatus !== "idle") return; // don't save twice
+    if (isInsightLoading || !insight) return;
+    if (saveStatus !== "idle") return; // avoid double save
 
     const save = async () => {
       setSaveStatus("saving");
@@ -396,7 +397,7 @@ function ResultContent() {
           prediction: {
             risk_score: storedResult.prediction.risk_score,
             risk_level: storedResult.prediction.risk_level,
-            probabilities: storedResult.prediction.probabilities as any, // ✅ fix: allow nested probabilities for lifestyle model
+            probabilities: storedResult.prediction.probabilities as any,
             breakdown: isLifestylePrediction(storedResult.prediction)
               ? storedResult.prediction.breakdown
               : undefined,
@@ -406,6 +407,11 @@ function ResultContent() {
             string | number | boolean | null
           >,
           submittedAt: storedResult.submittedAt,
+          aiInsight: insight ?? undefined,
+          aiProvider:
+            insightProvider === "gemini" ? insightProvider : undefined,
+          aiModel: insightModel,
+          aiGeneratedAt: new Date().toISOString(),
         });
 
         setSaveStatus("saved");
@@ -416,7 +422,15 @@ function ResultContent() {
     };
 
     void save();
-  }, [storedResult, isSignedIn, authLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [
+    storedResult,
+    isSignedIn,
+    authLoading,
+    isInsightLoading,
+    insight,
+    insightProvider,
+    insightModel,
+  ]);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {

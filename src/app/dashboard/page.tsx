@@ -24,7 +24,7 @@ interface Screening {
   screening_results: ScreeningResult | null;
 }
 
-// ── Helpers ────────────────────────────────────────────────────
+// ── Colors & badges ────────────────────────────────────────────
 const riskColor: Record<RiskLevel, string> = {
   Low: "#2DB87A",
   Moderate: "#F5A623",
@@ -32,9 +32,9 @@ const riskColor: Record<RiskLevel, string> = {
 };
 
 const riskBadge: Record<RiskLevel, string> = {
-  Low: "bg-risk-low/10 text-risk-low border-risk-low/20",
-  Moderate: "bg-amber-50 text-risk-moderate border-amber-200",
-  High: "bg-red-50 text-risk-high border-red-200",
+  Low: "bg-green-50 text-green-700 border-green-200",
+  Moderate: "bg-amber-50 text-amber-700 border-amber-200",
+  High: "bg-red-50 text-red-700 border-red-200",
 };
 
 function scoreToPercent(s: number): number {
@@ -102,10 +102,10 @@ function TrendSparkline({ screenings }: { screenings: Screening[] }) {
   const trend = delta === 0 ? "stable" : delta < 0 ? "improving" : "rising";
   const trendColor =
     trend === "improving"
-      ? "text-risk-low"
+      ? "text-green-600"
       : trend === "rising"
-        ? "text-risk-high"
-        : "text-muted";
+        ? "text-red-600"
+        : "text-gray-500";
   const trendLabel =
     trend === "improving"
       ? `↓ ${Math.abs(delta)}% from last`
@@ -196,7 +196,7 @@ function ScoreRing({ percent, level }: { percent: number; level: RiskLevel }) {
           cy="50"
           r={r}
           fill="none"
-          stroke="#F5F7FA"
+          stroke="#EFF3F6"
           strokeWidth="9"
         />
         <circle
@@ -212,8 +212,8 @@ function ScoreRing({ percent, level }: { percent: number; level: RiskLevel }) {
         />
       </svg>
       <div className="absolute flex flex-col items-center">
-        <span className="text-lg font-bold text-heading">{percent}%</span>
-        <span className="text-[9px] text-muted uppercase tracking-wide">
+        <span className="text-xl font-bold text-gray-900">{percent}%</span>
+        <span className="text-[10px] text-gray-500 uppercase tracking-wide">
           risk
         </span>
       </div>
@@ -221,80 +221,251 @@ function ScoreRing({ percent, level }: { percent: number; level: RiskLevel }) {
   );
 }
 
-// ── Screening Row with colored circle + link ──────────────────
-function ScreeningRow({ s, isLatest }: { s: Screening; isLatest: boolean }) {
+// ── Group helpers ──────────────────────────────────────────────
+function groupByDate(screenings: Screening[]): Map<string, Screening[]> {
+  const map = new Map<string, Screening[]>();
+  for (const s of screenings) {
+    const key = s.test_taken_on.split("T")[0];
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(s);
+  }
+  return map;
+}
+
+function formatGroupDate(isoDate: string): string {
+  const d = new Date(isoDate + "T00:00:00");
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+
+  const sameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+
+  if (sameDay(d, today)) return "Today";
+  if (sameDay(d, yesterday)) return "Yesterday";
+
+  return d.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+// ── Individual screening card (fixed circle & colors) ─────────
+function ScreeningCard({
+  s,
+  isLatest,
+  isSelected,
+  onSelect,
+}: {
+  s: Screening;
+  isLatest: boolean;
+  isSelected: boolean;
+  onSelect: (id: string, checked: boolean) => void;
+}) {
   const result = s.screening_results;
   if (!result) return null;
   const pct = scoreToPercent(result.risk_score);
   const level = result.risk_level;
+  const color = riskColor[level];
+  // Calculate circle dash
+  const r = 17; // radius
+  const circ = 2 * Math.PI * r;
+  const dash = (pct / 100) * circ;
 
   return (
-    <Link
-      href={`/screening/${s.id}`}
-      className={`flex items-center gap-4 px-5 py-4 rounded-xl border transition-all hover:shadow-sm ${
-        isLatest
-          ? "border-primary/20 bg-mint/10"
-          : "border-gray-100 bg-white hover:border-gray-200"
+    <div
+      className={`group flex items-center justify-between bg-white rounded-2xl border px-4 py-3 transition-all hover:shadow-md ${
+        isSelected
+          ? "border-primary/50 bg-primary/5"
+          : "border-gray-100 hover:border-gray-200"
       }`}
     >
-      {/* Mini ring with dynamic risk color */}
-      <div className="relative flex-shrink-0 w-10 h-10">
-        <svg viewBox="0 0 40 40" className="-rotate-90 w-10 h-10">
-          <circle
-            cx="20"
-            cy="20"
-            r="16"
-            fill="none"
-            stroke="#F5F7FA"
-            strokeWidth="5"
-          />
-          <circle
-            cx="20"
-            cy="20"
-            r="16"
-            fill="none"
-            stroke={riskColor[level]}
-            strokeWidth="5"
-            strokeLinecap="round"
-            strokeDasharray={`${(pct / 100) * 2 * Math.PI * 16} ${2 * Math.PI * 16}`}
-          />
-        </svg>
-        <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-heading">
-          {pct}%
-        </span>
+      {/* Left side: checkbox + info */}
+      <div className="flex items-center gap-3">
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={(e) => onSelect(s.id, e.target.checked)}
+          className="w-4.5 h-4.5 rounded border-gray-300 text-primary focus:ring-primary/30 cursor-pointer"
+        />
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span
+              className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border w-fit ${riskBadge[level]}`}
+            >
+              <span
+                className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                style={{ backgroundColor: color }}
+              />
+              {level} Risk
+            </span>
+            {isLatest && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
+                Latest
+              </span>
+            )}
+          </div>
+          <span className="text-[11px] text-muted">
+            {s.source === "medical" ? "🏥 Clinical" : "🌿 Lifestyle"}
+          </span>
+        </div>
       </div>
 
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span
-            className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${riskBadge[level]}`}
+      {/* Right side: mini ring + link */}
+      <Link href={`/screening/${s.id}`} className="flex items-center gap-2">
+        <div className="relative flex items-center justify-center w-10 h-10 flex-shrink-0">
+          <svg
+            viewBox="0 0 44 44"
+            className="absolute inset-0 -rotate-90 w-10 h-10"
           >
-            {level} Risk
+            <circle
+              cx="22"
+              cy="22"
+              r={r}
+              fill="none"
+              stroke="#EDF2F7"
+              strokeWidth="4.5"
+            />
+            <circle
+              cx="22"
+              cy="22"
+              r={r}
+              fill="none"
+              stroke={color}
+              strokeWidth="4.5"
+              strokeLinecap="round"
+              strokeDasharray={`${dash} ${circ}`}
+            />
+          </svg>
+          <span
+            className="text-[11px] font-bold relative z-10"
+            style={{ color }}
+          >
+            {pct}%
           </span>
-          <span className="text-[11px] text-muted capitalize">
-            {s.source === "medical" ? "Clinical" : "Lifestyle"}
-          </span>
-          {isLatest && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
-              Latest
-            </span>
+        </div>
+        <svg
+          className="w-4 h-4 text-gray-300 group-hover:text-gray-400 transition-colors"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2.5}
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+      </Link>
+    </div>
+  );
+}
+
+// ── Grouped history with select all + delete button ───────────
+function ScreeningHistory({
+  screenings,
+  selectedIds,
+  onSelect,
+  onSelectAll,
+  onDeleteSelected,
+  deleting,
+}: {
+  screenings: Screening[];
+  selectedIds: Set<string>;
+  onSelect: (id: string, checked: boolean) => void;
+  onSelectAll: (checked: boolean) => void;
+  onDeleteSelected: () => void;
+  deleting: boolean;
+}) {
+  if (screenings.length === 0) {
+    return (
+      <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
+        <EmptyState />
+      </div>
+    );
+  }
+
+  const grouped = groupByDate(screenings);
+  const latestId = screenings[0]?.id;
+  const allSelected =
+    screenings.length > 0 && screenings.every((s) => selectedIds.has(s.id));
+  const someSelected = selectedIds.size > 0;
+
+  return (
+    <div className="space-y-6">
+      {/* Select all row with Delete button on the right */}
+      <div className="flex items-center justify-between px-1">
+        <label className="flex items-center gap-2 cursor-pointer text-xs text-muted hover:text-heading transition-colors">
+          <input
+            type="checkbox"
+            checked={allSelected}
+            onChange={(e) => onSelectAll(e.target.checked)}
+            className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary/30 cursor-pointer"
+          />
+          <span>{allSelected ? "Deselect all" : "Select all"}</span>
+        </label>
+        <div className="flex items-center gap-3">
+          {someSelected && (
+            <>
+              <span className="text-[11px] text-primary font-medium">
+                {selectedIds.size} selected
+              </span>
+              <button
+                onClick={onDeleteSelected}
+                disabled={deleting}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-medium rounded-full transition-colors disabled:opacity-50"
+              >
+                {deleting ? (
+                  <div className="w-3 h-3 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <svg
+                    className="w-3.5 h-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
+                  </svg>
+                )}
+                Delete
+              </button>
+            </>
           )}
         </div>
-        <p className="text-xs text-muted mt-1">
-          {formatShortDate(s.test_taken_on)}
-        </p>
       </div>
 
-      <svg
-        className="w-4 h-4 text-muted flex-shrink-0"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
-        viewBox="0 0 24 24"
-      >
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-      </svg>
-    </Link>
+      {/* Grouped cards */}
+      {Array.from(grouped.entries()).map(([dateKey, group]) => (
+        <div key={dateKey}>
+          <div className="flex items-center gap-3 mb-2.5 px-1">
+            <span className="text-xs font-semibold text-gray-700">
+              {formatGroupDate(dateKey)}
+            </span>
+            <div className="flex-1 h-px bg-gray-100" />
+            <span className="text-[10px] text-gray-400">
+              {group.length} {group.length === 1 ? "test" : "tests"}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {group.map((s) => (
+              <ScreeningCard
+                key={s.id}
+                s={s}
+                isLatest={s.id === latestId}
+                isSelected={selectedIds.has(s.id)}
+                onSelect={onSelect}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -340,9 +511,10 @@ export default function DashboardPage() {
   const [screenings, setScreenings] = useState<Screening[]>([]);
   const [loading, setLoading] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
 
   const fetchScreenings = async (userId: string) => {
-    // Fetch screenings
     const { data: screeningsData, error: screeningsError } = await supabase
       .from("screenings")
       .select("id, source, test_taken_on, submitted_at")
@@ -353,10 +525,10 @@ export default function DashboardPage() {
     if (screeningsError) throw screeningsError;
     if (!screeningsData || screeningsData.length === 0) {
       setScreenings([]);
+      setSelectedIds(new Set());
       return;
     }
 
-    // Fetch results
     const screeningIds = screeningsData.map((s) => s.id);
     const { data: resultsData, error: resultsError } = await supabase
       .from("screening_results")
@@ -381,6 +553,7 @@ export default function DashboardPage() {
     }));
 
     setScreenings(merged);
+    setSelectedIds(new Set());
   };
 
   useEffect(() => {
@@ -403,6 +576,43 @@ export default function DashboardPage() {
     setSigningOut(true);
     await supabase.auth.signOut();
     router.replace("/");
+  };
+
+  const handleSelect = (id: string, checked: boolean) => {
+    const newSet = new Set(selectedIds);
+    if (checked) newSet.add(id);
+    else newSet.delete(id);
+    setSelectedIds(newSet);
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const allIds = screenings.map((s) => s.id);
+      setSelectedIds(new Set(allIds));
+    } else {
+      setSelectedIds(new Set());
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.size === 0) return;
+    const confirmMsg = `Delete ${selectedIds.size} screening${selectedIds.size === 1 ? "" : "s"}? This cannot be undone.`;
+    if (!confirm(confirmMsg)) return;
+
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("screenings")
+        .delete()
+        .in("id", Array.from(selectedIds));
+      if (error) throw error;
+      if (user) await fetchScreenings(user.id);
+    } catch (err) {
+      console.error("Delete failed:", err);
+      alert("Could not delete screenings. Please try again.");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const latest = screenings[0] ?? null;
@@ -439,13 +649,13 @@ export default function DashboardPage() {
       : null;
 
   return (
-    <main className="min-h-screen flex flex-col bg-page">
-      <nav className="w-full px-6 py-5 border-b border-gray-100/60 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
+    <main className="min-h-screen flex flex-col bg-gray-50">
+      <nav className="sticky top-0 z-10 bg-white/80 backdrop-blur-sm border-b border-gray-100">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <Logo />
           <Link
             href="/"
-            className="flex items-center gap-1.5 px-4 py-2 bg-primary text-white text-xs font-semibold rounded-full hover:bg-primary-dark transition-all shadow-[0_2px_8px_-2px_rgba(45,184,122,0.4)]"
+            className="flex items-center gap-1.5 px-4 py-2 bg-primary text-white text-xs font-semibold rounded-full shadow-sm hover:bg-primary-dark transition-all"
           >
             <svg
               className="w-3.5 h-3.5"
@@ -465,30 +675,28 @@ export default function DashboardPage() {
         </div>
       </nav>
 
-      <section className="flex-1 flex flex-col items-center px-4 sm:px-6 pt-8 pb-24">
-        <div className="w-full max-w-2xl space-y-4">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
+        <div className="space-y-6">
           {/* Profile card */}
-          <div className="bg-white border border-gray-100 rounded-2xl p-6 flex items-center gap-4 animate-fade-in">
+          <div className="bg-white rounded-2xl border border-gray-100 p-5 flex items-center gap-4 shadow-sm">
             {avatarUrl ? (
               <img
                 src={avatarUrl}
                 alt={fullName}
-                className="w-14 h-14 rounded-full object-cover border-2 border-gray-100 flex-shrink-0"
+                className="w-12 h-12 rounded-full object-cover border border-gray-200"
               />
             ) : (
-              <div className="w-14 h-14 rounded-full bg-mint flex items-center justify-center flex-shrink-0">
-                <span className="text-xl font-bold text-primary">
+              <div className="w-12 h-12 rounded-full bg-mint flex items-center justify-center">
+                <span className="text-lg font-bold text-primary">
                   {fullName[0]?.toUpperCase()}
                 </span>
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="text-base font-bold text-heading truncate">
-                {fullName}
-              </p>
-              <p className="text-xs text-muted truncate">{email}</p>
+              <p className="text-base font-bold text-gray-900">{fullName}</p>
+              <p className="text-xs text-gray-500">{email}</p>
               {createdAt && (
-                <p className="text-[11px] text-muted mt-1">
+                <p className="text-[11px] text-gray-400 mt-0.5">
                   Member since {memberSince(createdAt)}
                 </p>
               )}
@@ -496,10 +704,10 @@ export default function DashboardPage() {
             <button
               onClick={handleSignOut}
               disabled={signingOut}
-              className="flex-shrink-0 flex items-center gap-1.5 px-3.5 py-2 text-xs text-muted hover:text-heading border border-gray-200 hover:border-gray-300 rounded-full transition-all disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 border border-gray-200 rounded-full transition-colors disabled:opacity-50"
             >
               {signingOut ? (
-                <div className="w-3 h-3 border border-muted border-t-transparent rounded-full animate-spin" />
+                <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin" />
               ) : (
                 <svg
                   className="w-3.5 h-3.5"
@@ -522,27 +730,27 @@ export default function DashboardPage() {
           {/* Latest result */}
           {latest && latestResult && latestPct !== null && (
             <div
-              className={`bg-white border-2 rounded-2xl p-6 animate-fade-in-up stagger-1`}
-              style={{ borderColor: `${riskColor[latestResult.risk_level]}33` }}
+              className="bg-white rounded-2xl border-2 p-6 shadow-sm"
+              style={{ borderColor: `${riskColor[latestResult.risk_level]}30` }}
             >
-              <p className="text-xs uppercase tracking-widest text-muted font-medium mb-4">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">
                 Latest result
               </p>
-              <div className="flex items-center gap-5">
+              <div className="flex flex-col sm:flex-row items-center gap-5">
                 <ScoreRing
                   percent={latestPct}
                   level={latestResult.risk_level}
                 />
-                <div className="flex-1">
+                <div className="flex-1 text-center sm:text-left">
                   <span
-                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${riskBadge[latestResult.risk_level]} mb-2`}
+                    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border ${riskBadge[latestResult.risk_level]} mb-2`}
                   >
                     {latestResult.risk_level} Risk
                   </span>
-                  <p className="text-xs text-muted">
+                  <p className="text-sm text-gray-600 mt-1">
                     {formatFullDate(latest.test_taken_on)}
                   </p>
-                  <p className="text-[11px] text-muted mt-0.5 capitalize">
+                  <p className="text-xs text-gray-500 capitalize mt-0.5">
                     {latest.source === "medical"
                       ? "Clinical model"
                       : "Lifestyle model"}
@@ -550,72 +758,67 @@ export default function DashboardPage() {
                 </div>
               </div>
               {screenings.length > 1 && (
-                <div className="mt-5 pt-5 border-t border-gray-100">
-                  <TrendSparkline screenings={screenings} />
-                </div>
+                <TrendSparkline screenings={screenings} />
               )}
             </div>
           )}
 
           {/* Stats row */}
           {screenings.length > 0 && (
-            <div className="grid grid-cols-3 gap-3 animate-fade-in-up stagger-2">
-              <div className="bg-white border border-gray-100 rounded-xl px-4 py-3 text-center">
-                <p className="text-base font-bold text-heading">
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-white rounded-xl border border-gray-100 px-4 py-3 text-center shadow-sm">
+                <p className="text-xl font-bold text-gray-900">
                   {screenings.length}
                 </p>
-                <p className="text-[10px] text-muted mt-0.5 leading-tight">
+                <p className="text-[11px] text-gray-500 uppercase tracking-wide">
                   Total screenings
                 </p>
               </div>
-              <div className="bg-white border border-gray-100 rounded-xl px-4 py-3 text-center">
-                <p className="text-base font-bold text-heading">
+              <div className="bg-white rounded-xl border border-gray-100 px-4 py-3 text-center shadow-sm">
+                <p className="text-xl font-bold text-gray-900">
                   {averageRisk !== null ? `${averageRisk}%` : "—"}
                 </p>
-                <p className="text-[10px] text-muted mt-0.5 leading-tight">
-                  Avg risk score
+                <p className="text-[11px] text-gray-500 uppercase tracking-wide">
+                  Avg risk
                 </p>
               </div>
-              <div className="bg-white border border-gray-100 rounded-xl px-4 py-3 text-center">
-                <p className="text-base font-bold text-heading">
+              <div className="bg-white rounded-xl border border-gray-100 px-4 py-3 text-center shadow-sm">
+                <p className="text-xl font-bold text-gray-900">
                   {screenings[0]?.test_taken_on
                     ? formatShortDate(screenings[0].test_taken_on)
                     : "—"}
                 </p>
-                <p className="text-[10px] text-muted mt-0.5 leading-tight">
+                <p className="text-[11px] text-gray-500 uppercase tracking-wide">
                   Last check
                 </p>
               </div>
             </div>
           )}
 
-          {/* Screening history */}
-          <div className="animate-fade-in-up stagger-3">
+          {/* Screening history with grouped select + delete on right */}
+          <div>
             <div className="flex items-center justify-between mb-3 px-1">
-              <p className="text-xs uppercase tracking-widest text-muted font-medium">
+              <p className="text-xs uppercase tracking-widest text-gray-500 font-medium">
                 Screening history
               </p>
-              <span className="text-[11px] text-muted">
+              <span className="text-[11px] text-gray-400">
                 {screenings.length} total
               </span>
             </div>
-            {screenings.length === 0 ? (
-              <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
-                <EmptyState />
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {screenings.map((s, i) => (
-                  <ScreeningRow key={s.id} s={s} isLatest={i === 0} />
-                ))}
-              </div>
-            )}
+            <ScreeningHistory
+              screenings={screenings}
+              selectedIds={selectedIds}
+              onSelect={handleSelect}
+              onSelectAll={handleSelectAll}
+              onDeleteSelected={handleDeleteSelected}
+              deleting={deleting}
+            />
           </div>
 
           {/* Disclaimer */}
-          <div className="flex gap-3 px-4 py-4 bg-page border border-dashed border-gray-200 rounded-xl animate-fade-in-up stagger-4">
+          <div className="flex gap-3 px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl">
             <svg
-              className="w-4 h-4 text-muted mt-0.5 flex-shrink-0"
+              className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0"
               fill="none"
               stroke="currentColor"
               strokeWidth={2}
@@ -627,8 +830,8 @@ export default function DashboardPage() {
                 d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
               />
             </svg>
-            <p className="text-[11px] text-muted leading-relaxed">
-              <span className="font-semibold text-heading">
+            <p className="text-[11px] text-gray-500 leading-relaxed">
+              <span className="font-semibold text-gray-700">
                 Not a medical diagnosis.
               </span>{" "}
               Results are screening estimates only. Always consult a qualified
@@ -636,7 +839,7 @@ export default function DashboardPage() {
             </p>
           </div>
         </div>
-      </section>
+      </div>
     </main>
   );
 }

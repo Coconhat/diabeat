@@ -88,7 +88,7 @@ export default function Home() {
                 rippleColor="#ADD8E6"
                 className="text-black rounded-xl px-7 py-4 text-base sm:text-lg w-full sm:w-[260px] h-14"
               >
-                ❤️ Lifestyle Screening
+                Lifestyle Screening
               </RippleButton>
               <p className="text-xs sm:text-sm text-muted/80 leading-relaxed max-w-[18rem]">
                 Based on habits, symptoms, and health history
@@ -99,7 +99,7 @@ export default function Home() {
               className="group w-full sm:w-auto flex flex-col items-center text-center gap-2"
             >
               <RainbowButton className="text-white rounded-xl px-7 py-4 text-base sm:text-lg w-full sm:w-[260px] h-14">
-                🩺 Clinical Screening
+                Clinical Screening
               </RainbowButton>
               <p className="text-xs sm:text-sm text-muted/80 leading-relaxed max-w-[18rem]">
                 I have lab results (HbA1c, cholesterol, etc.)
