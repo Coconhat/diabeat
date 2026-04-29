@@ -196,7 +196,7 @@ export default function MedicalScreen() {
       const num = Number.parseFloat(rawValue);
       const result = schema.safeParse(num);
       if (!result.success) {
-        setFieldError(result.error.errors[0].message);
+        setFieldError(result.error.issues[0].message);
       } else {
         setFieldError("");
       }
@@ -238,8 +238,8 @@ export default function MedicalScreen() {
     const validation = medicalDataSchema.safeParse(parsed);
     if (!validation.success) {
       // show first error
-      const firstError = validation.error.errors[0];
-      setSubmitError(`${firstError.path}: ${firstError.message}`);
+      const firstError = validation.error.issues[0];
+      setSubmitError(`${firstError.path.join(".")}: ${firstError.message}`);
       return;
     }
 

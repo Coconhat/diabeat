@@ -349,7 +349,7 @@ export default function NonMedicalScreen() {
       const num = Number.parseFloat(rawValue);
       const result = schema.safeParse(num);
       if (!result.success) {
-        setFieldError(result.error.errors[0].message);
+        setFieldError(result.error.issues[0].message);
       } else {
         setFieldError("");
       }
@@ -380,8 +380,8 @@ export default function NonMedicalScreen() {
     // Final validation of all fields
     const validation = lifestyleDataSchema.safeParse(data);
     if (!validation.success) {
-      const firstError = validation.error.errors[0];
-      setSubmitError(`${firstError.path}: ${firstError.message}`);
+      const firstError = validation.error.issues[0];
+      setSubmitError(`${firstError.path.join(".")}: ${firstError.message}`);
       return;
     }
 
