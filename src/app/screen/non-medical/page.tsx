@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { z } from "zod";
 import Logo from "@/components/Logo";
 import ProgressBar from "@/components/ProgressBar";
 import StepWrapper from "@/components/StepWrapper";
@@ -17,12 +18,10 @@ const FASTAPI_URL =
   process.env.NEXT_PUBLIC_FASTAPI_URL ?? "http://127.0.0.1:8000";
 
 interface FormData {
-  // Demographics
   age: string;
   gender: string;
   weight: string;
   height: string;
-  // CDC lifestyle features
   high_bp: string;
   high_chol: string;
   smoker: string;
@@ -30,7 +29,6 @@ interface FormData {
   physical_activity: string;
   stroke: string;
   heart_disease: string;
-  // UCI symptom features
   polyuria: string;
   polydipsia: string;
   sudden_weight_loss: string;
@@ -45,6 +43,52 @@ interface FormData {
   muscle_stiffness: string;
   alopecia: string;
 }
+
+// ── Zod validation schemas ─────────────────────────────────────
+const positiveNumber = (min: number, max: number) =>
+  z
+    .number()
+    .finite()
+    .positive()
+    .min(min, { message: `Must be at least ${min}` })
+    .max(max, { message: `Must be at most ${max}` });
+
+// Full schema for final submission
+const lifestyleDataSchema = z.object({
+  gender: z.enum(["Male", "Female"]),
+  age: positiveNumber(1, 120),
+  weight: positiveNumber(10, 300), // kg
+  height: positiveNumber(50, 250), // cm
+  // CDC features (must be "Yes" or "No")
+  high_bp: z.enum(["Yes", "No"]),
+  high_chol: z.enum(["Yes", "No"]),
+  smoker: z.enum(["Yes", "No"]),
+  heavy_alcohol: z.enum(["Yes", "No"]),
+  physical_activity: z.enum(["Yes", "No"]),
+  stroke: z.enum(["Yes", "No"]),
+  heart_disease: z.enum(["Yes", "No"]),
+  // UCI symptoms
+  polyuria: z.enum(["Yes", "No"]),
+  polydipsia: z.enum(["Yes", "No"]),
+  sudden_weight_loss: z.enum(["Yes", "No"]),
+  weakness: z.enum(["Yes", "No"]),
+  polyphagia: z.enum(["Yes", "No"]),
+  genital_thrush: z.enum(["Yes", "No"]),
+  visual_blurring: z.enum(["Yes", "No"]),
+  itching: z.enum(["Yes", "No"]),
+  irritability: z.enum(["Yes", "No"]),
+  delayed_healing: z.enum(["Yes", "No"]),
+  partial_paresis: z.enum(["Yes", "No"]),
+  muscle_stiffness: z.enum(["Yes", "No"]),
+  alopecia: z.enum(["Yes", "No"]),
+});
+
+// Per‑step schemas (for numeric fields)
+const stepSchemas: Record<string, z.ZodSchema> = {
+  age: positiveNumber(1, 120),
+  weight: positiveNumber(10, 300),
+  height: positiveNumber(50, 250),
+};
 
 const INITIAL: FormData = {
   age: "",
@@ -74,7 +118,7 @@ const INITIAL: FormData = {
 };
 
 const steps = [
-  // ── Demographics ──────────────────────────────────────────
+  // Demographics
   {
     key: "age",
     label: "How old are you?",
@@ -103,7 +147,7 @@ const steps = [
     type: "number",
     placeholder: "e.g. 170",
   },
-  // ── CDC Lifestyle features ─────────────────────────────────
+  // CDC lifestyle
   {
     key: "high_bp",
     label: "Have you been told you have high blood pressure?",
@@ -153,7 +197,7 @@ const steps = [
     type: "select",
     options: ["Yes", "No"],
   },
-  // ── UCI Symptom features ───────────────────────────────────
+  // UCI symptoms
   {
     key: "polyuria",
     label: "Do you urinate more frequently than usual?",
@@ -247,21 +291,18 @@ const steps = [
   },
 ] as const;
 
-// Clean 1:1 mapping — no guesswork
 function mapToLifestylePayload(data: FormData): LifestyleRequestPayload {
   const age = parseFloat(data.age) || 0;
   const weight = parseFloat(data.weight) || 0;
   const heightCm = parseFloat(data.height) || 0;
   const heightM = heightCm > 0 ? heightCm / 100 : 1;
   const bmi = parseFloat((weight / (heightM * heightM)).toFixed(2));
-
   const yn = (val: string) => (val === "Yes" ? 1 : 0);
 
   return {
     gender: data.gender,
     age,
     bmi,
-    // CDC features — direct from form answers
     high_bp: yn(data.high_bp),
     high_chol: yn(data.high_chol),
     smoker: yn(data.smoker),
@@ -269,7 +310,6 @@ function mapToLifestylePayload(data: FormData): LifestyleRequestPayload {
     physical_activity: yn(data.physical_activity),
     stroke: yn(data.stroke),
     heart_disease: yn(data.heart_disease),
-    // UCI features — direct from form answers
     polyuria: yn(data.polyuria),
     polydipsia: yn(data.polydipsia),
     sudden_weight_loss: yn(data.sudden_weight_loss),
@@ -283,7 +323,6 @@ function mapToLifestylePayload(data: FormData): LifestyleRequestPayload {
     partial_paresis: yn(data.partial_paresis),
     muscle_stiffness: yn(data.muscle_stiffness),
     alopecia: yn(data.alopecia),
-    // Obesity auto-calculated from BMI — not asked separately
     obesity: bmi >= 30 ? 1 : 0,
   };
 }
@@ -292,17 +331,57 @@ export default function NonMedicalScreen() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [data, setData] = useState<FormData>(INITIAL);
+  const [fieldError, setFieldError] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const current = steps[step];
-  const value = data[current.key as keyof FormData];
-  const canNext = value.trim() !== "";
+  const rawValue = data[current.key as keyof FormData];
+  const canNext = rawValue.trim() !== "";
+
+  // Validate current field on change
+  useEffect(() => {
+    if (!canNext) {
+      setFieldError("");
+      return;
+    }
+    const schema = stepSchemas[current.key];
+    if (schema && current.type === "number") {
+      const num = Number.parseFloat(rawValue);
+      const result = schema.safeParse(num);
+      if (!result.success) {
+        setFieldError(result.error.errors[0].message);
+      } else {
+        setFieldError("");
+      }
+    } else if (current.type === "select") {
+      if (
+        rawValue !== "Yes" &&
+        rawValue !== "No" &&
+        rawValue !== "Male" &&
+        rawValue !== "Female"
+      ) {
+        setFieldError("Please select an option");
+      } else {
+        setFieldError("");
+      }
+    } else {
+      setFieldError("");
+    }
+  }, [rawValue, current.key, current.type, canNext]);
 
   const handleNext = useCallback(async () => {
-    if (!canNext || isSubmitting) return;
+    if (!canNext || fieldError || isSubmitting) return;
 
     if (step < steps.length - 1) {
       setStep(step + 1);
+      return;
+    }
+
+    // Final validation of all fields
+    const validation = lifestyleDataSchema.safeParse(data);
+    if (!validation.success) {
+      const firstError = validation.error.errors[0];
+      setSubmitError(`${firstError.path}: ${firstError.message}`);
       return;
     }
 
@@ -311,7 +390,6 @@ export default function NonMedicalScreen() {
 
     try {
       const payload = mapToLifestylePayload(data);
-
       const response = await fetch(`${FASTAPI_URL}/predict/lifestyle`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -323,7 +401,6 @@ export default function NonMedicalScreen() {
       }
 
       const prediction = (await response.json()) as LifestylePrediction;
-
       const stored: StoredResult = {
         source: "lifestyle",
         prediction,
@@ -345,7 +422,7 @@ export default function NonMedicalScreen() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [canNext, data, isSubmitting, router, step]);
+  }, [canNext, fieldError, isSubmitting, step, data, router]);
 
   function handleBack() {
     if (step > 0) setStep(step - 1);
@@ -356,13 +433,16 @@ export default function NonMedicalScreen() {
     setSubmitError("");
   }
 
+  // Enter key only when field is valid
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Enter") void handleNext();
+      if (e.key === "Enter" && canNext && !fieldError && !isSubmitting) {
+        void handleNext();
+      }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [handleNext]);
+  }, [canNext, fieldError, isSubmitting, handleNext]);
 
   return (
     <main className="min-h-screen flex flex-col">
@@ -386,25 +466,30 @@ export default function NonMedicalScreen() {
               sublabel={current.sublabel}
             >
               {current.type === "number" && (
-                <input
-                  key={current.key}
-                  type="number"
-                  inputMode="numeric"
-                  value={value}
-                  onChange={(e) => setValue(e.target.value)}
-                  placeholder={
-                    "placeholder" in current ? current.placeholder : ""
-                  }
-                  className="w-full px-5 py-4 rounded-xl border border-gray-200 text-lg bg-page/50 placeholder:text-muted/40 transition-all duration-200"
-                  autoFocus
-                />
+                <div className="relative">
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={rawValue}
+                    onChange={(e) => setValue(e.target.value)}
+                    placeholder={
+                      "placeholder" in current ? current.placeholder : ""
+                    }
+                    className={`w-full px-5 py-4 rounded-xl border text-lg bg-page/50 placeholder:text-muted/40 transition-all duration-200 ${
+                      fieldError
+                        ? "border-red-300 focus:border-red-500 focus:ring-red-100"
+                        : "border-gray-200 focus:border-primary"
+                    }`}
+                    autoFocus
+                  />
+                </div>
               )}
 
               {current.type === "select" && (
                 <div className="flex flex-col gap-2.5">
                   {"options" in current &&
                     current.options.map((opt) => {
-                      const selected = value === opt;
+                      const selected = rawValue === opt;
                       return (
                         <button
                           key={opt}
@@ -436,6 +521,10 @@ export default function NonMedicalScreen() {
                     })}
                 </div>
               )}
+
+              {fieldError && (
+                <p className="mt-2 text-sm text-red-500">{fieldError}</p>
+              )}
             </StepWrapper>
 
             <div className="flex items-center justify-between mt-10">
@@ -462,7 +551,7 @@ export default function NonMedicalScreen() {
 
               <button
                 onClick={() => void handleNext()}
-                disabled={!canNext || isSubmitting}
+                disabled={!canNext || !!fieldError || isSubmitting}
                 className="btn-press group flex items-center gap-1.5 px-8 py-2.5 bg-primary hover:bg-primary-dark text-white font-medium rounded-full transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_2px_8px_-2px_rgba(0,119,182,0.3)]"
               >
                 {isSubmitting
@@ -492,7 +581,7 @@ export default function NonMedicalScreen() {
               </p>
             )}
 
-            {canNext && current.type === "number" && (
+            {canNext && !fieldError && current.type === "number" && (
               <p className="text-center text-xs text-muted/50 mt-4 animate-fade-in">
                 Press{" "}
                 <kbd className="px-1.5 py-0.5 bg-page rounded text-[10px] font-mono border border-gray-200">
