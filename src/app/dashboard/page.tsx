@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Logo from "@/components/Logo";
 import { supabase } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 
-type RiskLevel = "Low" | "Moderate" | "High";
+type RiskLevel = "low" | "moderate" | "high";
 
 interface ScreeningResult {
   risk_score: number;
@@ -24,33 +24,37 @@ interface Screening {
   screening_results: ScreeningResult | null;
 }
 
-// ── Colors & badges ────────────────────────────────────────────
+// ── Design tokens ──────────────────────────────────────────────
 const riskColor: Record<RiskLevel, string> = {
-  Low: "#2DB87A",
-  Moderate: "#F5A623",
-  High: "#E84040",
+  low: "#16A34A",
+  moderate: "#D97706",
+  high: "#DC2626",
+};
+
+const riskBg: Record<RiskLevel, string> = {
+  low: "#F0FDF4",
+  moderate: "#FFFBEB",
+  high: "#FEF2F2",
+};
+
+const riskBorder: Record<RiskLevel, string> = {
+  low: "#BBF7D0",
+  moderate: "#FDE68A",
+  high: "#FECACA",
 };
 
 function riskBadgeStyle(level: RiskLevel): React.CSSProperties {
-  const color = riskColor[level];
   return {
-    backgroundColor: `${color}18`,
-    color,
-    borderColor: `${color}40`,
+    backgroundColor: riskBg[level],
+    color: riskColor[level],
+    borderColor: riskBorder[level],
   };
 }
 
+// ── Utilities ──────────────────────────────────────────────────
 function scoreToPercent(s: number): number {
   if (typeof s !== "number" || !Number.isFinite(s)) return 0;
   return Math.max(0, Math.min(100, Math.round(s * 100)));
-}
-
-function formatShortDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
 }
 
 function formatFullDate(iso: string): string {
@@ -60,179 +64,6 @@ function formatFullDate(iso: string): string {
     day: "numeric",
     year: "numeric",
   });
-}
-
-function memberSince(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-  });
-}
-
-// ── Trend sparkline (unchanged) ───────────────────────────────
-function TrendSparkline({ screenings }: { screenings: Screening[] }) {
-  const points = screenings
-    .filter((s) => s.screening_results)
-    .slice(0, 8)
-    .reverse()
-    .map((s) => scoreToPercent(s.screening_results!.risk_score));
-
-  if (points.length < 2) return null;
-
-  const W = 280,
-    H = 72,
-    pad = 8;
-  const max = Math.max(...points, 100);
-  const min = 0;
-
-  const coords = points.map((v, i) => ({
-    x: pad + (i / (points.length - 1)) * (W - pad * 2),
-    y: H - pad - ((v - min) / (max - min)) * (H - pad * 2),
-  }));
-
-  const path = coords
-    .map((c, i) => `${i === 0 ? "M" : "L"} ${c.x} ${c.y}`)
-    .join(" ");
-  const fill = [
-    ...coords.map((c) => `${c.x},${c.y}`),
-    `${coords[coords.length - 1].x},${H}`,
-    `${coords[0].x},${H}`,
-  ].join(" ");
-
-  const latest = points[points.length - 1];
-  const prev = points[points.length - 2];
-  const delta = latest - prev;
-  const trend = delta === 0 ? "stable" : delta < 0 ? "improving" : "rising";
-  const trendColor =
-    trend === "improving"
-      ? "text-green-600"
-      : trend === "rising"
-        ? "text-red-600"
-        : "text-gray-500";
-  const trendLabel =
-    trend === "improving"
-      ? `↓ ${Math.abs(delta)}% from last`
-      : trend === "rising"
-        ? `↑ ${delta}% from last`
-        : "No change from last";
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-xs uppercase tracking-widest text-muted font-medium">
-          Risk trend
-        </p>
-        <span className={`text-xs font-semibold ${trendColor}`}>
-          {trendLabel}
-        </span>
-      </div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 72 }}>
-        <rect
-          x={0}
-          y={0}
-          width={W}
-          height={H * 0.3}
-          fill="#E84040"
-          opacity={0.04}
-        />
-        <rect
-          x={0}
-          y={H * 0.3}
-          width={W}
-          height={H * 0.3}
-          fill="#F5A623"
-          opacity={0.04}
-        />
-        <rect
-          x={0}
-          y={H * 0.6}
-          width={W}
-          height={H * 0.4}
-          fill="#2DB87A"
-          opacity={0.04}
-        />
-        <polygon points={fill} fill="url(#sparkGrad)" opacity={0.25} />
-        <path
-          d={path}
-          fill="none"
-          stroke="#2B6FEB"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        {coords.map((c, i) => (
-          <circle
-            key={i}
-            cx={c.x}
-            cy={c.y}
-            r={i === coords.length - 1 ? 4 : 3}
-            fill={i === coords.length - 1 ? "#2B6FEB" : "#fff"}
-            stroke="#2B6FEB"
-            strokeWidth="2"
-          />
-        ))}
-        <defs>
-          <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#2B6FEB" stopOpacity={0.4} />
-            <stop offset="100%" stopColor="#2B6FEB" stopOpacity={0} />
-          </linearGradient>
-        </defs>
-      </svg>
-      <div className="flex justify-between mt-1">
-        <span className="text-[10px] text-muted">Oldest</span>
-        <span className="text-[10px] text-muted">Latest</span>
-      </div>
-    </div>
-  );
-}
-
-// ── Score ring (big) ──────────────────────────────────────────
-function ScoreRing({ percent, level }: { percent: number; level: RiskLevel }) {
-  const r = 42,
-    circ = 2 * Math.PI * r;
-  const color = riskColor[level];
-  return (
-    <div className="relative inline-flex items-center justify-center flex-shrink-0">
-      <svg width="100" height="100" className="-rotate-90">
-        <circle
-          cx="50"
-          cy="50"
-          r={r}
-          fill="none"
-          stroke="#EFF3F6"
-          strokeWidth="9"
-        />
-        <circle
-          cx="50"
-          cy="50"
-          r={r}
-          fill="none"
-          stroke={color}
-          strokeWidth="9"
-          strokeLinecap="round"
-          strokeDasharray={`${(percent / 100) * circ} ${circ}`}
-          style={{ transition: "stroke-dasharray 1s ease" }}
-        />
-      </svg>
-      <div className="absolute flex flex-col items-center">
-        <span className="text-xl font-bold text-gray-900">{percent}%</span>
-        <span className="text-[10px] text-gray-500 uppercase tracking-wide">
-          risk
-        </span>
-      </div>
-    </div>
-  );
-}
-
-// ── Group helpers ──────────────────────────────────────────────
-function groupByDate(screenings: Screening[]): Map<string, Screening[]> {
-  const map = new Map<string, Screening[]>();
-  for (const s of screenings) {
-    const key = s.test_taken_on.split("T")[0];
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(s);
-  }
-  return map;
 }
 
 function formatGroupDate(isoDate: string): string {
@@ -257,218 +88,595 @@ function formatGroupDate(isoDate: string): string {
   });
 }
 
-// ── Individual screening card (fixed circle & colors) ─────────
-function ScreeningCard({
-  s,
-  isLatest,
-  isSelected,
-  onSelect,
-}: {
-  s: Screening;
-  isLatest: boolean;
-  isSelected: boolean;
-  onSelect: (id: string, checked: boolean) => void;
-}) {
-  const result = s.screening_results;
-  if (!result) return null;
-  const pct = scoreToPercent(result.risk_score);
-  const level = result.risk_level;
-  const color = riskColor[level];
-  // Calculate circle dash
-  const r = 17; // radius
+function memberSince(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function formatShortDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+// ── Score Ring ─────────────────────────────────────────────────
+function ScoreRing({ percent, level }: { percent: number; level: RiskLevel }) {
+  const r = 44;
   const circ = 2 * Math.PI * r;
-  const dash = (pct / 100) * circ;
-
+  const color = riskColor[level];
   return (
-    <div
-      className={`group flex items-center justify-between bg-white rounded-2xl border px-4 py-3 transition-all hover:shadow-md ${
-        isSelected
-          ? "border-primary/50 bg-primary/5"
-          : "border-gray-100 hover:border-gray-200"
-      }`}
-    >
-      {/* Left side: checkbox + info */}
-      <div className="flex items-center gap-3">
-        <input
-          type="checkbox"
-          checked={isSelected}
-          onChange={(e) => onSelect(s.id, e.target.checked)}
-          className="w-4.5 h-4.5 rounded border-gray-300 text-primary focus:ring-primary/30 cursor-pointer"
-        />
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span
-              className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border w-fit"
-              style={riskBadgeStyle(level)}
-            >
-              <span
-                className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                style={{ backgroundColor: color }}
-              />
-              {level} Risk
-            </span>
-            {isLatest && (
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
-                Latest
-              </span>
-            )}
-          </div>
-          <span className="text-[11px] text-muted">
-            {s.source === "medical" ? "🏥 Clinical" : "🌿 Lifestyle"}
-          </span>
-        </div>
-      </div>
-
-      {/* Right side: mini ring + link */}
-      <Link href={`/screening/${s.id}`} className="flex items-center gap-2">
-        <div className="relative flex items-center justify-center w-10 h-10 flex-shrink-0">
-          <svg
-            viewBox="0 0 44 44"
-            className="absolute inset-0 -rotate-90 w-10 h-10"
-          >
-            <circle
-              cx="22"
-              cy="22"
-              r={r}
-              fill="none"
-              stroke="#EDF2F7"
-              strokeWidth="4.5"
-            />
-            <circle
-              cx="22"
-              cy="22"
-              r={r}
-              fill="none"
-              stroke={color}
-              strokeWidth="4.5"
-              strokeLinecap="round"
-              strokeDasharray={`${dash} ${circ}`}
-            />
-          </svg>
-          <span
-            className="text-[11px] font-bold relative z-10"
-            style={{ color }}
-          >
-            {pct}%
-          </span>
-        </div>
-        <svg
-          className="w-4 h-4 text-gray-300 group-hover:text-gray-400 transition-colors"
+    <div className="relative inline-flex items-center justify-center flex-shrink-0">
+      <svg width="108" height="108" className="-rotate-90">
+        <circle
+          cx="54"
+          cy="54"
+          r={r}
           fill="none"
-          stroke="currentColor"
-          strokeWidth={2.5}
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-        </svg>
-      </Link>
+          stroke="#F1F5F9"
+          strokeWidth="10"
+        />
+        <circle
+          cx="54"
+          cy="54"
+          r={r}
+          fill="none"
+          stroke={color}
+          strokeWidth="10"
+          strokeLinecap="round"
+          strokeDasharray={`${(percent / 100) * circ} ${circ}`}
+          style={{ transition: "stroke-dasharray 1s cubic-bezier(.4,0,.2,1)" }}
+        />
+      </svg>
+      <div className="absolute flex flex-col items-center leading-none">
+        <span className="text-2xl font-black text-gray-900 tracking-tight">
+          {percent}%
+        </span>
+        <span className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold mt-0.5">
+          risk
+        </span>
+      </div>
     </div>
   );
 }
 
-// ── Grouped history with select all + delete button ───────────
-function ScreeningHistory({
+// ── Trend Sparkline ────────────────────────────────────────────
+function TrendSparkline({ screenings }: { screenings: Screening[] }) {
+  const points = screenings
+    .filter((s) => s.screening_results)
+    .slice(0, 8)
+    .reverse()
+    .map((s) => scoreToPercent(s.screening_results!.risk_score));
+
+  if (points.length < 2) return null;
+
+  const W = 280,
+    H = 64,
+    pad = 8;
+  const max = Math.max(...points, 100);
+  const min = 0;
+
+  const coords = points.map((v, i) => ({
+    x: pad + (i / (points.length - 1)) * (W - pad * 2),
+    y: H - pad - ((v - min) / (max - min)) * (H - pad * 2),
+  }));
+
+  const path = coords
+    .map((c, i) => `${i === 0 ? "M" : "L"} ${c.x} ${c.y}`)
+    .join(" ");
+  const fill = [
+    ...coords.map((c) => `${c.x},${c.y}`),
+    `${coords[coords.length - 1].x},${H}`,
+    `${coords[0].x},${H}`,
+  ].join(" ");
+
+  const latest = points[points.length - 1];
+  const prev = points[points.length - 2];
+  const delta = latest - prev;
+  const trend = delta === 0 ? "stable" : delta < 0 ? "improving" : "rising";
+
+  return (
+    <div className="mt-5 pt-5 border-t border-gray-100">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-[11px] uppercase tracking-widest text-gray-400 font-semibold">
+          Risk trend
+        </p>
+        <span
+          className="text-[11px] font-bold px-2 py-0.5 rounded-full"
+          style={{
+            color:
+              trend === "improving"
+                ? riskColor.low
+                : trend === "rising"
+                  ? riskColor.high
+                  : "#6B7280",
+            backgroundColor:
+              trend === "improving"
+                ? riskBg.low
+                : trend === "rising"
+                  ? riskBg.high
+                  : "#F3F4F6",
+          }}
+        >
+          {trend === "improving"
+            ? `↓ ${Math.abs(delta)}pts`
+            : trend === "rising"
+              ? `↑ ${delta}pts`
+              : "Stable"}
+        </span>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 64 }}>
+        <defs>
+          <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#3B82F6" stopOpacity={0.2} />
+            <stop offset="100%" stopColor="#3B82F6" stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <polygon points={fill} fill="url(#sparkGrad)" />
+        <path
+          d={path}
+          fill="none"
+          stroke="#3B82F6"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        {coords.map((c, i) => (
+          <circle
+            key={i}
+            cx={c.x}
+            cy={c.y}
+            r={i === coords.length - 1 ? 4 : 2.5}
+            fill={i === coords.length - 1 ? "#3B82F6" : "#fff"}
+            stroke="#3B82F6"
+            strokeWidth="2"
+          />
+        ))}
+      </svg>
+      <div className="flex justify-between mt-1">
+        <span className="text-[10px] text-gray-400">Oldest</span>
+        <span className="text-[10px] text-gray-400">Latest</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Mini ring for day detail cards ────────────────────────────
+function MiniRing({ pct, level }: { pct: number; level: RiskLevel }) {
+  const r = 15;
+  const circ = 2 * Math.PI * r;
+  const color = riskColor[level];
+  return (
+    <div className="relative flex items-center justify-center w-9 h-9 flex-shrink-0">
+      <svg viewBox="0 0 36 36" className="absolute inset-0 -rotate-90 w-9 h-9">
+        <circle
+          cx="18"
+          cy="18"
+          r={r}
+          fill="none"
+          stroke="#EEF2FF"
+          strokeWidth="4"
+        />
+        <circle
+          cx="18"
+          cy="18"
+          r={r}
+          fill="none"
+          stroke={color}
+          strokeWidth="4"
+          strokeLinecap="round"
+          strokeDasharray={`${(pct / 100) * circ} ${circ}`}
+        />
+      </svg>
+      <span
+        className="text-[9px] font-black relative z-10 tabular-nums"
+        style={{ color }}
+      >
+        {pct}%
+      </span>
+    </div>
+  );
+}
+
+// ── Calendar History ───────────────────────────────────────────
+function CalendarHistory({
   screenings,
   selectedIds,
   onSelect,
-  onSelectAll,
   onDeleteSelected,
   deleting,
 }: {
   screenings: Screening[];
   selectedIds: Set<string>;
   onSelect: (id: string, checked: boolean) => void;
-  onSelectAll: (checked: boolean) => void;
   onDeleteSelected: () => void;
   deleting: boolean;
 }) {
+  const today = new Date();
+
+  const [viewDate, setViewDate] = useState(() => {
+    if (screenings.length > 0) {
+      const d = new Date(screenings[0].test_taken_on + "T00:00:00");
+      return new Date(d.getFullYear(), d.getMonth(), 1);
+    }
+    return new Date(today.getFullYear(), today.getMonth(), 1);
+  });
+
+  const [activeDay, setActiveDay] = useState<string | null>(() => {
+    if (screenings.length > 0) return screenings[0].test_taken_on.split("T")[0];
+    return null;
+  });
+
+  const dateMap = useMemo(() => {
+    const map = new Map<string, Screening[]>();
+    for (const s of screenings) {
+      const key = s.test_taken_on.split("T")[0];
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(s);
+    }
+    return map;
+  }, [screenings]);
+
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+  const firstDayOfMonth = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const todayStr = today.toISOString().split("T")[0];
+
+  const prevMonth = () => setViewDate(new Date(year, month - 1, 1));
+  const nextMonth = () => setViewDate(new Date(year, month + 1, 1));
+
+  const activeDayScreenings = activeDay ? (dateMap.get(activeDay) ?? []) : [];
+  const allActiveDaySelected =
+    activeDayScreenings.length > 0 &&
+    activeDayScreenings.every((s) => selectedIds.has(s.id));
+  const someActiveDaySelected = activeDayScreenings.some((s) =>
+    selectedIds.has(s.id),
+  );
+
+  // Cells: null for empty leading slots, number for day
+  const cells: (null | number)[] = [];
+  for (let i = 0; i < firstDayOfMonth; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  const monthLabel = viewDate.toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+
   if (screenings.length === 0) {
-    return (
-      <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
-        <EmptyState />
-      </div>
-    );
+    return <EmptyState />;
   }
 
-  const grouped = groupByDate(screenings);
-  const latestId = screenings[0]?.id;
-  const allSelected =
-    screenings.length > 0 && screenings.every((s) => selectedIds.has(s.id));
-  const someSelected = selectedIds.size > 0;
-
   return (
-    <div className="space-y-6">
-      {/* Select all row with Delete button on the right */}
-      <div className="flex items-center justify-between px-1">
-        <label className="flex items-center gap-2 cursor-pointer text-xs text-muted hover:text-heading transition-colors">
-          <input
-            type="checkbox"
-            checked={allSelected}
-            onChange={(e) => onSelectAll(e.target.checked)}
-            className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary/30 cursor-pointer"
-          />
-          <span>{allSelected ? "Deselect all" : "Select all"}</span>
-        </label>
-        <div className="flex items-center gap-3">
-          {someSelected && (
-            <>
-              <span className="text-[11px] text-primary font-medium">
-                {selectedIds.size} selected
-              </span>
-              <button
-                onClick={onDeleteSelected}
-                disabled={deleting}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-medium rounded-full transition-colors disabled:opacity-50"
-              >
-                {deleting ? (
-                  <div className="w-3 h-3 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <svg
-                    className="w-3.5 h-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
-                )}
-                Delete
-              </button>
-            </>
-          )}
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      {/* Calendar header */}
+      <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-gray-50">
+        <button
+          onClick={prevMonth}
+          className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-all"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.5}
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+        </button>
+        <div className="text-center">
+          <p className="text-sm font-bold text-gray-900">{monthLabel}</p>
+          <p className="text-[10px] text-gray-400 mt-0.5">
+            {Array.from(dateMap.entries())
+              .filter(([key]) => {
+                const d = new Date(key + "T00:00:00");
+                return d.getFullYear() === year && d.getMonth() === month;
+              })
+              .reduce((acc, [, arr]) => acc + arr.length, 0)}{" "}
+            screenings this month
+          </p>
         </div>
+        <button
+          onClick={nextMonth}
+          className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-all"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.5}
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
+        </button>
       </div>
 
-      {/* Grouped cards */}
-      {Array.from(grouped.entries()).map(([dateKey, group]) => (
-        <div key={dateKey}>
-          <div className="flex items-center gap-3 mb-2.5 px-1">
-            <span className="text-xs font-semibold text-gray-700">
-              {formatGroupDate(dateKey)}
-            </span>
-            <div className="flex-1 h-px bg-gray-100" />
-            <span className="text-[10px] text-gray-400">
-              {group.length} {group.length === 1 ? "test" : "tests"}
+      {/* Day labels */}
+      <div className="grid grid-cols-7 px-4 pt-3 pb-1">
+        {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
+          <div
+            key={d}
+            className="text-center text-[10px] font-bold text-gray-300 uppercase tracking-widest"
+          >
+            {d}
+          </div>
+        ))}
+      </div>
+
+      {/* Calendar grid */}
+      <div className="grid grid-cols-7 gap-1 px-4 pb-4">
+        {cells.map((day, i) => {
+          if (day === null) return <div key={`e-${i}`} />;
+
+          const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+          const dayScreenings = dateMap.get(dateStr) ?? [];
+          const hasScreenings = dayScreenings.length > 0;
+          const isToday = dateStr === todayStr;
+          const isActive = dateStr === activeDay;
+
+          const riskLevels = dayScreenings
+            .map((s) => s.screening_results?.risk_level)
+            .filter(Boolean) as RiskLevel[];
+
+          // Dominant risk for the day (highest severity wins)
+          const dominantRisk: RiskLevel | null = riskLevels.includes("high")
+            ? "high"
+            : riskLevels.includes("moderate")
+              ? "moderate"
+              : riskLevels.length > 0
+                ? "low"
+                : null;
+
+          return (
+            <button
+              key={dateStr}
+              onClick={() => {
+                if (!hasScreenings) return;
+                setActiveDay(isActive ? null : dateStr);
+              }}
+              disabled={!hasScreenings}
+              className={`
+                relative flex flex-col items-center py-1.5 rounded-xl transition-all duration-150 min-h-[52px]
+                ${
+                  isActive
+                    ? "shadow-md scale-[1.04]"
+                    : hasScreenings
+                      ? "hover:bg-gray-50 hover:scale-[1.02]"
+                      : "cursor-default"
+                }
+              `}
+              style={
+                isActive && dominantRisk
+                  ? { backgroundColor: riskColor[dominantRisk], color: "#fff" }
+                  : isActive
+                    ? { backgroundColor: "#3B82F6", color: "#fff" }
+                    : {}
+              }
+            >
+              {/* Today indicator ring */}
+              {isToday && !isActive && (
+                <span className="absolute inset-0 rounded-xl ring-2 ring-blue-400 ring-offset-0" />
+              )}
+
+              <span
+                className={`text-[13px] font-bold tabular-nums ${
+                  isActive
+                    ? "text-white"
+                    : isToday
+                      ? "text-blue-600"
+                      : hasScreenings
+                        ? "text-gray-800"
+                        : "text-gray-200"
+                }`}
+              >
+                {day}
+              </span>
+
+              {/* Risk dots */}
+              {hasScreenings && (
+                <div className="flex items-center gap-px mt-1.5 flex-wrap justify-center max-w-full px-1">
+                  {riskLevels.slice(0, 4).map((lvl, idx) => (
+                    <span
+                      key={idx}
+                      className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                      style={{
+                        backgroundColor: isActive
+                          ? "rgba(255,255,255,0.75)"
+                          : riskColor[lvl],
+                      }}
+                    />
+                  ))}
+                  {riskLevels.length > 4 && (
+                    <span
+                      className="text-[8px] font-bold ml-0.5"
+                      style={{
+                        color: isActive ? "rgba(255,255,255,0.6)" : "#9CA3AF",
+                      }}
+                    >
+                      +{riskLevels.length - 4}
+                    </span>
+                  )}
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Risk legend */}
+      <div className="flex items-center justify-center gap-5 px-5 py-3 border-t border-gray-50">
+        {(["low", "moderate", "high"] as RiskLevel[]).map((level) => (
+          <div key={level} className="flex items-center gap-1.5">
+            <span
+              className="w-2 h-2 rounded-full flex-shrink-0"
+              style={{ backgroundColor: riskColor[level] }}
+            />
+            <span className="text-[10px] font-medium text-gray-400 capitalize">
+              {level}
             </span>
           </div>
-          <div className="space-y-2">
-            {group.map((s) => (
-              <ScreeningCard
-                key={s.id}
-                s={s}
-                isLatest={s.id === latestId}
-                isSelected={selectedIds.has(s.id)}
-                onSelect={onSelect}
-              />
-            ))}
+        ))}
+      </div>
+
+      {/* ── Day detail panel ── */}
+      {activeDay && activeDayScreenings.length > 0 && (
+        <div className="border-t border-gray-100">
+          {/* Detail header */}
+          <div className="flex items-start justify-between px-5 pt-4 pb-3">
+            <div>
+              <p className="text-sm font-bold text-gray-900">
+                {formatGroupDate(activeDay)}
+              </p>
+              <p className="text-[11px] text-gray-400 mt-0.5">
+                {activeDayScreenings.length}{" "}
+                {activeDayScreenings.length === 1 ? "screening" : "screenings"}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {someActiveDaySelected && (
+                <button
+                  onClick={onDeleteSelected}
+                  disabled={deleting}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-[11px] font-semibold rounded-full transition-colors disabled:opacity-50"
+                >
+                  {deleting ? (
+                    <div className="w-3 h-3 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <svg
+                      className="w-3 h-3"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      />
+                    </svg>
+                  )}
+                  Delete ({selectedIds.size})
+                </button>
+              )}
+              <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={allActiveDaySelected}
+                  onChange={(e) =>
+                    activeDayScreenings.forEach((s) =>
+                      onSelect(s.id, e.target.checked),
+                    )
+                  }
+                  className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500/30 cursor-pointer"
+                />
+                <span className="text-[11px] text-gray-400 font-medium">
+                  Select all
+                </span>
+              </label>
+            </div>
+          </div>
+
+          {/* Screening cards */}
+          <div className="px-5 pb-5 space-y-2">
+            {activeDayScreenings.map((s) => {
+              const result = s.screening_results;
+              if (!result) return null;
+              const pct = scoreToPercent(result.risk_score);
+              const level = result.risk_level;
+              const isLatest = s.id === screenings[0]?.id;
+              const submittedTime = new Date(s.submitted_at).toLocaleTimeString(
+                "en-US",
+                { hour: "numeric", minute: "2-digit", hour12: true },
+              );
+
+              return (
+                <div
+                  key={s.id}
+                  className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all ${
+                    selectedIds.has(s.id)
+                      ? "border-blue-200 bg-blue-50/60"
+                      : "border-gray-100 bg-gray-50/40 hover:border-gray-200"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(s.id)}
+                    onChange={(e) => onSelect(s.id, e.target.checked)}
+                    className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500/30 cursor-pointer flex-shrink-0"
+                  />
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* Risk badge */}
+                      <span
+                        className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full border"
+                        style={riskBadgeStyle(level)}
+                      >
+                        <span
+                          className="w-1.5 h-1.5 rounded-full"
+                          style={{ backgroundColor: riskColor[level] }}
+                        />
+                        {level.charAt(0).toUpperCase() + level.slice(1)} Risk
+                      </span>
+                      {isLatest && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600 font-bold uppercase tracking-wide">
+                          Latest
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[10px] text-gray-400">
+                        {s.source === "medical"
+                          ? "🏥 Clinical"
+                          : "🌿 Lifestyle"}
+                      </span>
+                      <span className="text-[10px] text-gray-300">·</span>
+                      <span className="text-[10px] text-gray-400">
+                        {submittedTime}
+                      </span>
+                    </div>
+                  </div>
+
+                  <Link
+                    href={`/screening/${s.id}`}
+                    className="flex items-center gap-1.5 flex-shrink-0 group"
+                  >
+                    <MiniRing pct={pct} level={level} />
+                    <svg
+                      className="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-500 transition-colors"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2.5}
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </Link>
+                </div>
+              );
+            })}
           </div>
         </div>
-      ))}
+      )}
     </div>
   );
 }
@@ -476,10 +684,10 @@ function ScreeningHistory({
 // ── Empty state ────────────────────────────────────────────────
 function EmptyState() {
   return (
-    <div className="text-center py-12 px-6">
-      <div className="w-14 h-14 rounded-2xl bg-mint/40 flex items-center justify-center mx-auto mb-4">
+    <div className="bg-white border border-gray-100 rounded-2xl text-center py-14 px-6 shadow-sm">
+      <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mx-auto mb-4">
         <svg
-          className="w-7 h-7 text-primary"
+          className="w-7 h-7 text-blue-400"
           fill="none"
           stroke="currentColor"
           strokeWidth={1.5}
@@ -488,22 +696,41 @@ function EmptyState() {
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
-            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
           />
         </svg>
       </div>
-      <p className="text-sm font-semibold text-heading mb-1">
-        No screenings yet
-      </p>
-      <p className="text-xs text-muted mb-5">
-        Take your first screening and your results will appear here.
+      <p className="text-sm font-bold text-gray-900">No screenings yet</p>
+      <p className="text-xs text-gray-400 mt-1 mb-5">
+        Complete your first screening — results will appear here.
       </p>
       <Link
         href="/"
-        className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white font-semibold rounded-full text-sm shadow-[0_2px_12px_-2px_rgba(45,184,122,0.4)] hover:bg-primary-dark transition-all"
+        className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-xs font-semibold rounded-full shadow-sm hover:bg-blue-700 transition-all"
       >
         Take a screening
       </Link>
+    </div>
+  );
+}
+
+// ── Stat card ──────────────────────────────────────────────────
+function StatCard({
+  label,
+  value,
+  sub,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+}) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 px-4 py-3.5 shadow-sm text-center">
+      <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold mb-1">
+        {label}
+      </p>
+      <p className="text-lg font-black text-gray-900 leading-none">{value}</p>
+      {sub && <p className="text-[10px] text-gray-400 mt-1">{sub}</p>}
     </div>
   );
 }
@@ -583,25 +810,22 @@ export default function DashboardPage() {
   };
 
   const handleSelect = (id: string, checked: boolean) => {
-    const newSet = new Set(selectedIds);
-    if (checked) newSet.add(id);
-    else newSet.delete(id);
-    setSelectedIds(newSet);
-  };
-
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      const allIds = screenings.map((s) => s.id);
-      setSelectedIds(new Set(allIds));
-    } else {
-      setSelectedIds(new Set());
-    }
+    const next = new Set(selectedIds);
+    if (checked) next.add(id);
+    else next.delete(id);
+    setSelectedIds(next);
   };
 
   const handleDeleteSelected = async () => {
     if (selectedIds.size === 0) return;
-    const confirmMsg = `Delete ${selectedIds.size} screening${selectedIds.size === 1 ? "" : "s"}? This cannot be undone.`;
-    if (!confirm(confirmMsg)) return;
+    if (
+      !confirm(
+        `Delete ${selectedIds.size} screening${
+          selectedIds.size === 1 ? "" : "s"
+        }? This cannot be undone.`,
+      )
+    )
+      return;
 
     setDeleting(true);
     try {
@@ -625,22 +849,6 @@ export default function DashboardPage() {
     ? scoreToPercent(latestResult.risk_score)
     : null;
 
-  if (loading) {
-    return (
-      <main className="min-h-screen flex items-center justify-center bg-page">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </main>
-    );
-  }
-
-  const avatarUrl = user?.user_metadata?.avatar_url as string | undefined;
-  const fullName =
-    (user?.user_metadata?.full_name as string | undefined) ??
-    user?.email ??
-    "User";
-  const email = user?.email ?? "";
-  const createdAt = user?.created_at ?? "";
-
   const validScreenings = screenings.filter((s) => s.screening_results);
   const averageRisk =
     validScreenings.length > 0
@@ -652,14 +860,30 @@ export default function DashboardPage() {
         )
       : null;
 
+  if (loading) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="w-7 h-7 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      </main>
+    );
+  }
+
+  const email = user?.email ?? "";
+  const fullName =
+    (user?.user_metadata?.full_name as string | undefined) ??
+    user?.email ??
+    "User";
+  const createdAt = user?.created_at ?? "";
+
   return (
     <main className="min-h-screen flex flex-col bg-gray-50">
-      <nav className="sticky top-0 z-10 bg-white/80 backdrop-blur-sm border-b border-gray-100">
+      {/* Nav */}
+      <nav className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-gray-100">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <Logo />
           <Link
             href="/"
-            className="flex items-center gap-1.5 px-4 py-2 bg-primary text-white text-xs font-semibold rounded-full shadow-sm hover:bg-primary-dark transition-all"
+            className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-full shadow-sm hover:bg-blue-700 transition-all"
           >
             <svg
               className="w-3.5 h-3.5"
@@ -674,167 +898,173 @@ export default function DashboardPage() {
                 d="M12 4v16m8-8H4"
               />
             </svg>
-            New screening
+            New Screening
           </Link>
         </div>
       </nav>
 
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
-        <div className="space-y-6">
-          {/* Profile card */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-5 flex items-center gap-4 shadow-sm">
-            <div className="w-12 h-12 rounded-full bg-mint flex items-center justify-center">
-              <span className="text-lg font-bold text-primary">
-                {email?.[0]?.toUpperCase() ?? "?"}
-              </span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-base font-bold text-gray-900">{fullName}</p>
-              <p className="text-xs text-gray-500">{email}</p>
-              {createdAt && (
-                <p className="text-[11px] text-gray-400 mt-0.5">
-                  Member since {memberSince(createdAt)}
-                </p>
-              )}
-            </div>
-            <button
-              onClick={handleSignOut}
-              disabled={signingOut}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 border border-gray-200 rounded-full transition-colors disabled:opacity-50"
-            >
-              {signingOut ? (
-                <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <svg
-                  className="w-3.5 h-3.5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                  />
-                </svg>
-              )}
-              Sign out
-            </button>
+      <div className="max-w-2xl mx-auto w-full px-4 sm:px-6 py-8 space-y-5">
+        {/* ── Profile card ── */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4">
+          <div className="w-11 h-11 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+            <span className="text-base font-black text-white">
+              {email?.[0]?.toUpperCase() ?? "?"}
+            </span>
           </div>
-
-          {/* Latest result */}
-          {latest && latestResult && latestPct !== null && (
-            <div
-              className="bg-white rounded-2xl border-2 p-6 shadow-sm"
-              style={{ borderColor: `${riskColor[latestResult.risk_level]}30` }}
-            >
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">
-                Latest result
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-gray-900 truncate">
+              {fullName}
+            </p>
+            <p className="text-[11px] text-gray-400 truncate">{email}</p>
+            {createdAt && (
+              <p className="text-[10px] text-gray-300 mt-0.5">
+                Member since {memberSince(createdAt)}
               </p>
-              <div className="flex flex-col sm:flex-row items-center gap-5">
-                <ScoreRing
-                  percent={latestPct}
-                  level={latestResult.risk_level}
+            )}
+          </div>
+          <button
+            onClick={handleSignOut}
+            disabled={signingOut}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-gray-500 hover:text-gray-800 border border-gray-200 hover:border-gray-300 rounded-full transition-all disabled:opacity-50 flex-shrink-0"
+          >
+            {signingOut ? (
+              <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <svg
+                className="w-3.5 h-3.5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
                 />
-                <div className="flex-1 text-center sm:text-left">
+              </svg>
+            )}
+            Sign out
+          </button>
+        </div>
+
+        {/* ── Latest result card ── */}
+        {latest && latestResult && latestPct !== null && (
+          <div
+            className="bg-white rounded-2xl border shadow-sm p-6"
+            style={{ borderColor: riskBorder[latestResult.risk_level] }}
+          >
+            {/* Section label */}
+            <p className="text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-4">
+              Latest Result
+            </p>
+
+            <div className="flex items-center gap-5">
+              <ScoreRing percent={latestPct} level={latestResult.risk_level} />
+
+              <div className="flex-1 min-w-0">
+                {/* Risk badge */}
+                <span
+                  className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full border"
+                  style={riskBadgeStyle(latestResult.risk_level)}
+                >
                   <span
-                    className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border mb-2"
-                    style={riskBadgeStyle(latestResult.risk_level)}
-                  >
-                    {latestResult.risk_level} Risk
-                  </span>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {formatFullDate(latest.test_taken_on)}
-                  </p>
-                  <p className="text-xs text-gray-500 capitalize mt-0.5">
-                    {latest.source === "medical"
-                      ? "Clinical model"
-                      : "Lifestyle model"}
-                  </p>
-                </div>
-              </div>
-              {screenings.length > 1 && (
-                <TrendSparkline screenings={screenings} />
-              )}
-            </div>
-          )}
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{
+                      backgroundColor: riskColor[latestResult.risk_level],
+                    }}
+                  />
+                  {latestResult.risk_level.charAt(0).toUpperCase() +
+                    latestResult.risk_level.slice(1)}{" "}
+                  Risk
+                </span>
 
-          {/* Stats row */}
-          {screenings.length > 0 && (
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-white rounded-xl border border-gray-100 px-4 py-3 text-center shadow-sm">
-                <p className="text-xl font-bold text-gray-900">
-                  {screenings.length}
+                {/* Date */}
+                <p className="text-sm font-semibold text-gray-800 mt-2 leading-snug">
+                  {formatFullDate(latest.test_taken_on)}
                 </p>
-                <p className="text-[11px] text-gray-500 uppercase tracking-wide">
-                  Total screenings
-                </p>
-              </div>
-              <div className="bg-white rounded-xl border border-gray-100 px-4 py-3 text-center shadow-sm">
-                <p className="text-xl font-bold text-gray-900">
-                  {averageRisk !== null ? `${averageRisk}%` : "—"}
-                </p>
-                <p className="text-[11px] text-gray-500 uppercase tracking-wide">
-                  Avg risk
-                </p>
-              </div>
-              <div className="bg-white rounded-xl border border-gray-100 px-4 py-3 text-center shadow-sm">
-                <p className="text-xl font-bold text-gray-900">
-                  {screenings[0]?.test_taken_on
-                    ? formatShortDate(screenings[0].test_taken_on)
-                    : "—"}
-                </p>
-                <p className="text-[11px] text-gray-500 uppercase tracking-wide">
-                  Last check
-                </p>
-              </div>
-            </div>
-          )}
 
-          {/* Screening history with grouped select + delete on right */}
-          <div>
-            <div className="flex items-center justify-between mb-3 px-1">
-              <p className="text-xs uppercase tracking-widest text-gray-500 font-medium">
-                Screening history
-              </p>
-              <span className="text-[11px] text-gray-400">
-                {screenings.length} total
-              </span>
+                {/* Source */}
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {latest.source === "medical"
+                    ? "🏥 Clinical model"
+                    : "🌿 Lifestyle model"}
+                </p>
+              </div>
             </div>
-            <ScreeningHistory
-              screenings={screenings}
-              selectedIds={selectedIds}
-              onSelect={handleSelect}
-              onSelectAll={handleSelectAll}
-              onDeleteSelected={handleDeleteSelected}
-              deleting={deleting}
+
+            {/* Trend sparkline */}
+            {screenings.length > 1 && (
+              <TrendSparkline screenings={screenings} />
+            )}
+          </div>
+        )}
+
+        {/* ── Stats row ── */}
+        {screenings.length > 0 && (
+          <div className="grid grid-cols-3 gap-3">
+            <StatCard
+              label="Total"
+              value={String(screenings.length)}
+              sub="screenings"
+            />
+            <StatCard
+              label="Avg Risk"
+              value={averageRisk !== null ? `${averageRisk}%` : "—"}
+              sub="across all"
+            />
+            <StatCard
+              label="Last Check"
+              value={
+                screenings[0]?.test_taken_on
+                  ? formatShortDate(screenings[0].test_taken_on)
+                  : "—"
+              }
             />
           </div>
+        )}
 
-          {/* Disclaimer */}
-          <div className="flex gap-3 px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl">
-            <svg
-              className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              />
-            </svg>
-            <p className="text-[11px] text-gray-500 leading-relaxed">
-              <span className="font-semibold text-gray-700">
-                Not a medical diagnosis.
-              </span>{" "}
-              Results are screening estimates only. Always consult a qualified
-              healthcare provider.
+        {/* ── Calendar history ── */}
+        <div>
+          <div className="flex items-center justify-between mb-3 px-1">
+            <p className="text-[11px] uppercase tracking-widest text-gray-400 font-bold">
+              Screening History
             </p>
+            <span className="text-[11px] text-gray-400 font-medium">
+              {screenings.length} total
+            </span>
           </div>
+          <CalendarHistory
+            screenings={screenings}
+            selectedIds={selectedIds}
+            onSelect={handleSelect}
+            onDeleteSelected={handleDeleteSelected}
+            deleting={deleting}
+          />
+        </div>
+
+        {/* ── Disclaimer ── */}
+        <div className="flex gap-3 px-4 py-4 bg-white border border-gray-100 rounded-xl shadow-sm">
+          <svg
+            className="w-4 h-4 text-gray-300 mt-0.5 flex-shrink-0"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            />
+          </svg>
+          <p className="text-[11px] text-gray-400 leading-relaxed">
+            <span className="font-bold text-gray-600">
+              Not a medical diagnosis.
+            </span>{" "}
+            Results are screening estimates only. Always consult a qualified
+            healthcare provider.
+          </p>
         </div>
       </div>
     </main>
