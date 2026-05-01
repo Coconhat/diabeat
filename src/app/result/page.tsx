@@ -449,7 +449,18 @@ function ResultContent() {
   }, []);
 
   useEffect(() => {
-    const raw = sessionStorage.getItem(RESULT_STORAGE_KEY);
+    // After OAuth redirect, sessionStorage is gone — check localStorage backup
+    let raw = sessionStorage.getItem(RESULT_STORAGE_KEY);
+
+    if (!raw) {
+      raw = localStorage.getItem("pending_result");
+      if (raw) {
+        // Restore into sessionStorage and clean up
+        sessionStorage.setItem(RESULT_STORAGE_KEY, raw);
+        localStorage.removeItem("pending_result");
+      }
+    }
+
     if (!raw) return;
     try {
       setStoredResult(JSON.parse(raw) as StoredResult);
@@ -516,7 +527,7 @@ function ResultContent() {
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
+        redirectTo: `${window.location.origin}/auth/callback?next=/result`,
       },
     });
   };
