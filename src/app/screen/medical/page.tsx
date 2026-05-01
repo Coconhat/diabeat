@@ -56,7 +56,7 @@ const medicalDataSchema = z.object({
 
 // Step validation (same permissive ranges)
 const stepSchemas: Record<string, z.ZodSchema> = {
-  age: positiveNumber(1, 120),
+  age: positiveNumber(1, 99),
   urea: positiveNumber(0.5, 100),
   cr: positiveNumber(5, 2000),
   hba1c: positiveNumber(3, 20),

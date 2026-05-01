@@ -31,11 +31,14 @@ const riskColor: Record<RiskLevel, string> = {
   High: "#E84040",
 };
 
-const riskBadge: Record<RiskLevel, string> = {
-  Low: "bg-green-50 text-green-700 border-green-200",
-  Moderate: "bg-amber-50 text-amber-700 border-amber-200",
-  High: "bg-red-50 text-red-700 border-red-200",
-};
+function riskBadgeStyle(level: RiskLevel): React.CSSProperties {
+  const color = riskColor[level];
+  return {
+    backgroundColor: `${color}18`,
+    color,
+    borderColor: `${color}40`,
+  };
+}
 
 function scoreToPercent(s: number): number {
   if (typeof s !== "number" || !Number.isFinite(s)) return 0;
@@ -295,7 +298,8 @@ function ScreeningCard({
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-2 flex-wrap">
             <span
-              className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border w-fit ${riskBadge[level]}`}
+              className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border w-fit"
+              style={riskBadgeStyle(level)}
             >
               <span
                 className="w-1.5 h-1.5 rounded-full flex-shrink-0"
@@ -679,19 +683,11 @@ export default function DashboardPage() {
         <div className="space-y-6">
           {/* Profile card */}
           <div className="bg-white rounded-2xl border border-gray-100 p-5 flex items-center gap-4 shadow-sm">
-            {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt={fullName}
-                className="w-12 h-12 rounded-full object-cover border border-gray-200"
-              />
-            ) : (
-              <div className="w-12 h-12 rounded-full bg-mint flex items-center justify-center">
-                <span className="text-lg font-bold text-primary">
-                  {fullName[0]?.toUpperCase()}
-                </span>
-              </div>
-            )}
+            <div className="w-12 h-12 rounded-full bg-mint flex items-center justify-center">
+              <span className="text-lg font-bold text-primary">
+                {email?.[0]?.toUpperCase() ?? "?"}
+              </span>
+            </div>
             <div className="flex-1 min-w-0">
               <p className="text-base font-bold text-gray-900">{fullName}</p>
               <p className="text-xs text-gray-500">{email}</p>
@@ -743,7 +739,8 @@ export default function DashboardPage() {
                 />
                 <div className="flex-1 text-center sm:text-left">
                   <span
-                    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border ${riskBadge[latestResult.risk_level]} mb-2`}
+                    className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border mb-2"
+                    style={riskBadgeStyle(latestResult.risk_level)}
                   >
                     {latestResult.risk_level} Risk
                   </span>

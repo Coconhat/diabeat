@@ -86,7 +86,7 @@ export default function Home() {
             >
               <RippleButton
                 rippleColor="#ADD8E6"
-                className="text-black rounded-xl px-7 py-4 text-base sm:text-lg w-full sm:w-[260px] h-14"
+                className="text-black rounded-xl px-7 py-4 text-base sm:text-lg w-full sm:w-[260px] h-14 transition-all duration-200 hover:scale-[1.03] hover:shadow-md hover:brightness-95 active:scale-[0.98]"
               >
                 Lifestyle Screening
               </RippleButton>
@@ -98,7 +98,7 @@ export default function Home() {
               href="/screen/medical"
               className="group w-full sm:w-auto flex flex-col items-center text-center gap-2"
             >
-              <RainbowButton className="text-white rounded-xl px-7 py-4 text-base sm:text-lg w-full sm:w-[260px] h-14">
+              <RainbowButton className="text-white rounded-xl px-7 py-4 text-base sm:text-lg w-full sm:w-[260px] h-14 transition-all duration-200 hover:scale-[1.03] hover:shadow-lg active:scale-[0.98]">
                 Clinical Screening
               </RainbowButton>
               <p className="text-xs sm:text-sm text-muted/80 leading-relaxed max-w-[18rem]">

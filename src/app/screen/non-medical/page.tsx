@@ -56,7 +56,7 @@ const positiveNumber = (min: number, max: number) =>
 // Full schema for final submission
 const lifestyleDataSchema = z.object({
   gender: z.enum(["Male", "Female"]),
-  age: positiveNumber(1, 120),
+  age: positiveNumber(1, 99),
   weight: positiveNumber(10, 300), // kg
   height: positiveNumber(50, 250), // cm
   // CDC features (must be "Yes" or "No")
@@ -85,7 +85,7 @@ const lifestyleDataSchema = z.object({
 
 // Per‑step schemas (for numeric fields)
 const stepSchemas: Record<string, z.ZodSchema> = {
-  age: positiveNumber(1, 120),
+  age: positiveNumber(1, 99),
   weight: positiveNumber(10, 300),
   height: positiveNumber(50, 250),
 };
