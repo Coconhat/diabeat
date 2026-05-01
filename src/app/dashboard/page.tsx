@@ -735,6 +735,124 @@ function StatCard({
   );
 }
 
+// ── SignInGate (same as result page) ───────────────────────────
+function SignInGate({
+  onSignIn,
+  signingIn,
+}: {
+  onSignIn: () => void;
+  signingIn: boolean;
+}) {
+  return (
+    <div
+      className="absolute inset-0 z-10 flex flex-col items-center justify-center px-6 text-center rounded-2xl"
+      style={{
+        background:
+          "linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.88) 22%, rgba(255,255,255,1) 42%)",
+      }}
+    >
+      {/* Urgency badge */}
+      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-mint/70 text-primary text-[11px] font-bold uppercase tracking-wider mb-3">
+        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+          <path
+            fillRule="evenodd"
+            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+            clipRule="evenodd"
+          />
+        </svg>
+        Free forever
+      </div>
+
+      {/* Headline */}
+      <h3 className="text-[22px] font-bold text-heading leading-tight mb-2">
+        Sign in to view your history
+      </h3>
+
+      {/* Sub-copy */}
+      <p className="text-sm text-muted max-w-[280px] leading-relaxed mb-5">
+        Access all your past screenings, track risk trends, and get AI insights
+        personalized to you.
+      </p>
+
+      {/* Feature grid */}
+      <div className="grid grid-cols-2 gap-2 mb-6 w-full max-w-xs text-left">
+        {[
+          {
+            icon: "🧠",
+            label: "Full AI explanation",
+            sub: "Personalized to your result",
+          },
+          {
+            icon: "📅",
+            label: "Screening history",
+            sub: "Every test, saved forever",
+          },
+          {
+            icon: "📈",
+            label: "Trend tracking",
+            sub: "See if risk improves over time",
+          },
+          {
+            icon: "🔒",
+            label: "Private & encrypted",
+            sub: "Your data stays yours",
+          },
+        ].map((f) => (
+          <div
+            key={f.label}
+            className="flex items-start gap-2 bg-white/80 border border-gray-100 rounded-xl px-3 py-2.5"
+          >
+            <span className="text-base mt-0.5">{f.icon}</span>
+            <div>
+              <p className="text-[11px] font-semibold text-heading">
+                {f.label}
+              </p>
+              <p className="text-[10px] text-muted leading-tight mt-0.5">
+                {f.sub}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Google CTA */}
+      <button
+        onClick={onSignIn}
+        disabled={signingIn}
+        className="w-full max-w-xs flex items-center justify-center gap-3 px-6 py-3.5 bg-heading hover:opacity-90 text-white font-semibold rounded-full text-sm shadow-[0_4px_16px_-4px_rgba(26,29,35,0.35)] transition-all mb-2 disabled:opacity-60"
+      >
+        {signingIn ? (
+          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+        ) : (
+          <svg
+            className="w-4 h-4 flex-shrink-0"
+            viewBox="0 0 24 24"
+            fill="none"
+          >
+            <path
+              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+              fill="#4285F4"
+            />
+            <path
+              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+              fill="#34A853"
+            />
+            <path
+              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+              fill="#FBBC05"
+            />
+            <path
+              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+              fill="#EA4335"
+            />
+          </svg>
+        )}
+        {signingIn ? "Redirecting..." : "Continue with Google — it's free"}
+      </button>
+    </div>
+  );
+}
+
 // ── Main Dashboard ─────────────────────────────────────────────
 export default function DashboardPage() {
   const router = useRouter();
@@ -744,6 +862,43 @@ export default function DashboardPage() {
   const [signingOut, setSigningOut] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
+
+  // Auth state for gate
+  const [isSignedIn, setIsSignedIn] = useState<boolean | null>(null);
+  const [signingIn, setSigningIn] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  // ── Auth gate handlers ─────────────────────────────────────
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      const signedIn = !!data.user;
+      setIsSignedIn(signedIn);
+      setAuthLoading(false);
+      if (signedIn) setUser(data.user);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_e, session) => {
+        const signedIn = !!session?.user;
+        setIsSignedIn(signedIn);
+        setAuthLoading(false);
+        if (signedIn && session?.user) setUser(session.user);
+        else setUser(null);
+      },
+    );
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  const handleSignIn = async () => {
+    setSigningIn(true);
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
+      },
+    });
+  };
 
   const fetchScreenings = async (userId: string) => {
     const { data: screeningsData, error: screeningsError } = await supabase
@@ -787,26 +942,23 @@ export default function DashboardPage() {
     setSelectedIds(new Set());
   };
 
+  // Fetch screenings only when signed in and user exists
   useEffect(() => {
-    const init = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        router.replace("/");
-        return;
-      }
-      setUser(user);
-      await fetchScreenings(user.id);
+    if (isSignedIn && user) {
+      setLoading(true);
+      fetchScreenings(user.id)
+        .catch((err) => console.error("Failed to load screenings", err))
+        .finally(() => setLoading(false));
+    } else if (isSignedIn === false) {
       setLoading(false);
-    };
-    init();
-  }, [router]);
+    }
+  }, [isSignedIn, user]);
 
   const handleSignOut = async () => {
     setSigningOut(true);
     await supabase.auth.signOut();
-    router.replace("/");
+    // after sign out, UI will automatically show gate because isSignedIn becomes false
+    setSigningOut(false);
   };
 
   const handleSelect = (id: string, checked: boolean) => {
@@ -843,6 +995,7 @@ export default function DashboardPage() {
     }
   };
 
+  // ── Computed values for signed‑in dashboard ─────────────────
   const latest = screenings[0] ?? null;
   const latestResult = latest?.screening_results ?? null;
   const latestPct = latestResult
@@ -860,7 +1013,15 @@ export default function DashboardPage() {
         )
       : null;
 
-  if (loading) {
+  const email = user?.email ?? "";
+  const fullName =
+    (user?.user_metadata?.full_name as string | undefined) ??
+    user?.email ??
+    "User";
+  const createdAt = user?.created_at ?? "";
+
+  // Show a centered spinner while checking auth
+  if (authLoading) {
     return (
       <main className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="w-7 h-7 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
@@ -868,12 +1029,8 @@ export default function DashboardPage() {
     );
   }
 
-  const email = user?.email ?? "";
-  const fullName =
-    (user?.user_metadata?.full_name as string | undefined) ??
-    user?.email ??
-    "User";
-  const createdAt = user?.created_at ?? "";
+  // Show the same layout with gate if not signed in
+  const showGate = !isSignedIn;
 
   return (
     <main className="min-h-screen flex flex-col bg-gray-50">
@@ -903,7 +1060,7 @@ export default function DashboardPage() {
         </div>
       </nav>
 
-      <div className="max-w-2xl mx-auto w-full px-4 sm:px-6 py-8 space-y-5">
+      <div className="max-w-2xl mx-auto w-full px-4 sm:px-6 py-8 space-y-5 relative">
         {/* ── Profile card ── */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4">
           <div className="w-11 h-11 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
@@ -915,136 +1072,157 @@ export default function DashboardPage() {
             <p className="text-sm font-bold text-gray-900 truncate">
               {fullName}
             </p>
-            <p className="text-[11px] text-gray-400 truncate">{email}</p>
+            <p className="text-[11px] text-gray-400 truncate">
+              {email || "Guest"}
+            </p>
             {createdAt && (
               <p className="text-[10px] text-gray-300 mt-0.5">
                 Member since {memberSince(createdAt)}
               </p>
             )}
           </div>
-          <button
-            onClick={handleSignOut}
-            disabled={signingOut}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-gray-500 hover:text-gray-800 border border-gray-200 hover:border-gray-300 rounded-full transition-all disabled:opacity-50 flex-shrink-0"
-          >
-            {signingOut ? (
-              <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <svg
-                className="w-3.5 h-3.5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                />
-              </svg>
-            )}
-            Sign out
-          </button>
+          {isSignedIn && (
+            <button
+              onClick={handleSignOut}
+              disabled={signingOut}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-gray-500 hover:text-gray-800 border border-gray-200 hover:border-gray-300 rounded-full transition-all disabled:opacity-50 flex-shrink-0"
+            >
+              {signingOut ? (
+                <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <svg
+                  className="w-3.5 h-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                  />
+                </svg>
+              )}
+              Sign out
+            </button>
+          )}
         </div>
 
-        {/* ── Latest result card ── */}
-        {latest && latestResult && latestPct !== null && (
+        {/* Main dashboard content area — gate overlay on top if not signed in */}
+        <div className="relative">
+          {/* Always render the dashboard content (blurred when gate is shown) */}
           <div
-            className="bg-white rounded-2xl border shadow-sm p-6"
-            style={{ borderColor: riskBorder[latestResult.risk_level] }}
+            className={
+              showGate ? "filter blur-sm pointer-events-none select-none" : ""
+            }
           >
-            {/* Section label */}
-            <p className="text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-4">
-              Latest Result
-            </p>
-
-            <div className="flex items-center gap-5">
-              <ScoreRing percent={latestPct} level={latestResult.risk_level} />
-
-              <div className="flex-1 min-w-0">
-                {/* Risk badge */}
-                <span
-                  className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full border"
-                  style={riskBadgeStyle(latestResult.risk_level)}
-                >
-                  <span
-                    className="w-1.5 h-1.5 rounded-full"
-                    style={{
-                      backgroundColor: riskColor[latestResult.risk_level],
-                    }}
-                  />
-                  {latestResult.risk_level.charAt(0).toUpperCase() +
-                    latestResult.risk_level.slice(1)}{" "}
-                  Risk
-                </span>
-
-                {/* Date */}
-                <p className="text-sm font-semibold text-gray-800 mt-2 leading-snug">
-                  {formatFullDate(latest.test_taken_on)}
-                </p>
-
-                {/* Source */}
-                <p className="text-xs text-gray-400 mt-0.5">
-                  {latest.source === "medical"
-                    ? "🏥 Clinical model"
-                    : "🌿 Lifestyle model"}
-                </p>
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
               </div>
-            </div>
+            ) : (
+              <>
+                {/* ── Latest result card ── */}
+                {latest && latestResult && latestPct !== null && (
+                  <div
+                    className="bg-white rounded-2xl border shadow-sm p-6"
+                    style={{ borderColor: riskBorder[latestResult.risk_level] }}
+                  >
+                    <p className="text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-4">
+                      Latest Result
+                    </p>
+                    <div className="flex items-center gap-5">
+                      <ScoreRing
+                        percent={latestPct}
+                        level={latestResult.risk_level}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <span
+                          className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full border"
+                          style={riskBadgeStyle(latestResult.risk_level)}
+                        >
+                          <span
+                            className="w-1.5 h-1.5 rounded-full"
+                            style={{
+                              backgroundColor:
+                                riskColor[latestResult.risk_level],
+                            }}
+                          />
+                          {latestResult.risk_level.charAt(0).toUpperCase() +
+                            latestResult.risk_level.slice(1)}{" "}
+                          Risk
+                        </span>
+                        <p className="text-sm font-semibold text-gray-800 mt-2 leading-snug">
+                          {formatFullDate(latest.test_taken_on)}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {latest.source === "medical"
+                            ? "🏥 Clinical model"
+                            : "🌿 Lifestyle model"}
+                        </p>
+                      </div>
+                    </div>
+                    {screenings.length > 1 && (
+                      <TrendSparkline screenings={screenings} />
+                    )}
+                  </div>
+                )}
 
-            {/* Trend sparkline */}
-            {screenings.length > 1 && (
-              <TrendSparkline screenings={screenings} />
+                {/* ── Stats row ── */}
+                {screenings.length > 0 && (
+                  <div className="grid grid-cols-3 gap-3">
+                    <StatCard
+                      label="Total"
+                      value={String(screenings.length)}
+                      sub="screenings"
+                    />
+                    <StatCard
+                      label="Avg Risk"
+                      value={averageRisk !== null ? `${averageRisk}%` : "—"}
+                      sub="across all"
+                    />
+                    <StatCard
+                      label="Last Check"
+                      value={
+                        screenings[0]?.test_taken_on
+                          ? formatShortDate(screenings[0].test_taken_on)
+                          : "—"
+                      }
+                    />
+                  </div>
+                )}
+
+                {/* ── Calendar history ── */}
+                <div>
+                  <div className="flex items-center justify-between mb-3 px-1">
+                    <p className="text-[11px] uppercase tracking-widest text-gray-400 font-bold">
+                      Screening History
+                    </p>
+                    <span className="text-[11px] text-gray-400 font-medium">
+                      {screenings.length} total
+                    </span>
+                  </div>
+                  <CalendarHistory
+                    screenings={screenings}
+                    selectedIds={selectedIds}
+                    onSelect={handleSelect}
+                    onDeleteSelected={handleDeleteSelected}
+                    deleting={deleting}
+                  />
+                </div>
+              </>
             )}
           </div>
-        )}
 
-        {/* ── Stats row ── */}
-        {screenings.length > 0 && (
-          <div className="grid grid-cols-3 gap-3">
-            <StatCard
-              label="Total"
-              value={String(screenings.length)}
-              sub="screenings"
-            />
-            <StatCard
-              label="Avg Risk"
-              value={averageRisk !== null ? `${averageRisk}%` : "—"}
-              sub="across all"
-            />
-            <StatCard
-              label="Last Check"
-              value={
-                screenings[0]?.test_taken_on
-                  ? formatShortDate(screenings[0].test_taken_on)
-                  : "—"
-              }
-            />
-          </div>
-        )}
-
-        {/* ── Calendar history ── */}
-        <div>
-          <div className="flex items-center justify-between mb-3 px-1">
-            <p className="text-[11px] uppercase tracking-widest text-gray-400 font-bold">
-              Screening History
-            </p>
-            <span className="text-[11px] text-gray-400 font-medium">
-              {screenings.length} total
-            </span>
-          </div>
-          <CalendarHistory
-            screenings={screenings}
-            selectedIds={selectedIds}
-            onSelect={handleSelect}
-            onDeleteSelected={handleDeleteSelected}
-            deleting={deleting}
-          />
+          {/* Sign‑in gate overlay */}
+          {showGate && (
+            <SignInGate onSignIn={handleSignIn} signingIn={signingIn} />
+          )}
         </div>
 
         {/* ── Disclaimer ── */}
-        <div className="flex gap-3 px-4 py-4 bg-white border border-gray-100 rounded-xl shadow-sm">
+        <div className="flex gap-3 px-4 py-4 bg-white border border-gray-100 rounded-xl shadow-sm mt-44">
           <svg
             className="w-4 h-4 text-gray-300 mt-0.5 flex-shrink-0"
             fill="none"

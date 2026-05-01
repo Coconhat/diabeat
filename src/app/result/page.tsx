@@ -133,7 +133,7 @@ function ScoreRing({
   };
   return (
     <div className="relative inline-flex items-center justify-center">
-      <svg width="128" height="128" className="-rotate-90">
+      <svg width="128" height="128" className="-rotate-9m0">
         <circle
           cx="64"
           cy="64"
