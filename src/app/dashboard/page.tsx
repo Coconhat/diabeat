@@ -962,10 +962,12 @@ export default function DashboardPage() {
   };
 
   const handleSelect = (id: string, checked: boolean) => {
-    const next = new Set(selectedIds);
-    if (checked) next.add(id);
-    else next.delete(id);
-    setSelectedIds(next);
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
   };
 
   const handleDeleteSelected = async () => {
