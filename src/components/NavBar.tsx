@@ -2,21 +2,32 @@
 import { RESULT_STORAGE_KEY } from "@/lib/prediction";
 import StaggeredMenu from "./StaggeredMenu";
 import { supabase } from "@/lib/supabase";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const menuItems = [
   { label: "Home", ariaLabel: "Go to home page", link: "/" },
   { label: "Profile", ariaLabel: "View your profile", link: "/dashboard" },
-  {
-    label: "How it works",
-    ariaLabel: "How it works",
-    link: "/howitworks",
-  },
+  { label: "How it works", ariaLabel: "How it works", link: "/howitworks" },
   { label: "Privacy", ariaLabel: "Read privacy overview", link: "/privacy" },
 ];
 
 export default function NavBar() {
   const [signingIn, setSigningIn] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUserEmail(data.user?.email ?? null);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_e, session) => {
+        setUserEmail(session?.user?.email ?? null);
+      },
+    );
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
 
   const handleSignIn = async () => {
     setSigningIn(true);
@@ -30,7 +41,14 @@ export default function NavBar() {
       },
     });
   };
-  const socialItems = [{ label: "Google", onClick: handleSignIn, link: "#" }];
+
+  const socialItems = [
+    {
+      label: userEmail ?? (signingIn ? "Redirecting…" : "Google"),
+      onClick: userEmail ? undefined : handleSignIn,
+      link: userEmail ? "/dashboard" : "#",
+    },
+  ];
 
   return (
     <div className="flex items-center gap-2 text-2xl #1a1a1a">
