@@ -6,6 +6,7 @@ import Link from "next/link";
 import Logo from "@/components/Logo";
 import { supabase } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
+import { ConfirmModal } from "@/components/ConfirmationModal";
 
 type RiskLevel = "low" | "moderate" | "high";
 
@@ -862,6 +863,8 @@ export default function DashboardPage() {
   const [signingOut, setSigningOut] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  const [deleteModal, setDeleteModal] = useState(false);
+  const [deleteError, setDeleteError] = useState(false);
 
   // Auth state for gate
   const [isSignedIn, setIsSignedIn] = useState<boolean | null>(null);
@@ -970,17 +973,12 @@ export default function DashboardPage() {
     });
   };
 
-  const handleDeleteSelected = async () => {
+  const handleDeleteSelected = () => {
     if (selectedIds.size === 0) return;
-    if (
-      !confirm(
-        `Delete ${selectedIds.size} screening${
-          selectedIds.size === 1 ? "" : "s"
-        }? This cannot be undone.`,
-      )
-    )
-      return;
+    setDeleteModal(true);
+  };
 
+  const confirmDelete = async () => {
     setDeleting(true);
     try {
       const { error } = await supabase
@@ -988,10 +986,12 @@ export default function DashboardPage() {
         .delete()
         .in("id", Array.from(selectedIds));
       if (error) throw error;
+      setDeleteModal(false);
       if (user) await fetchScreenings(user.id);
     } catch (err) {
       console.error("Delete failed:", err);
-      alert("Could not delete screenings. Please try again.");
+      setDeleteModal(false);
+      setDeleteError(true);
     } finally {
       setDeleting(false);
     }
@@ -1247,6 +1247,30 @@ export default function DashboardPage() {
           </p>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={deleteModal}
+        variant="danger"
+        title={`Delete ${selectedIds.size} screening${selectedIds.size === 1 ? "" : "s"}?`}
+        description="This action is permanent and cannot be undone. Your screening data will be removed."
+        confirmLabel="Yes, delete"
+        cancelLabel="Keep them"
+        loading={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteModal(false)}
+      />
+
+      {/* Error modal */}
+      <ConfirmModal
+        isOpen={deleteError}
+        variant="default"
+        title="Something went wrong"
+        description="We couldn't delete your screenings. Please check your connection and try again."
+        confirmLabel="Got it"
+        cancelLabel=""
+        onConfirm={() => setDeleteError(false)}
+        onCancel={() => setDeleteError(false)}
+      />
     </main>
   );
 }
