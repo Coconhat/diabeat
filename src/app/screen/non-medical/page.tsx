@@ -44,7 +44,7 @@ interface FormData {
   alopecia: string;
 }
 
-// ── Zod validation schemas ─────────────────────────────────────
+// ── Zod validation schemas (fixed) ─────────────────────────────────────
 const positiveNumber = (min: number, max: number) =>
   z
     .number()
@@ -53,13 +53,19 @@ const positiveNumber = (min: number, max: number) =>
     .min(min, { message: `Must be at least ${min}` })
     .max(max, { message: `Must be at most ${max}` });
 
+// Coerce string to number for numeric fields
+const numericField = (min: number, max: number) =>
+  z.preprocess(
+    (val) => (typeof val === "string" ? Number.parseFloat(val) : val),
+    positiveNumber(min, max),
+  );
+
 // Full schema for final submission
 const lifestyleDataSchema = z.object({
   gender: z.enum(["Male", "Female"]),
-  age: positiveNumber(1, 99),
-  weight: positiveNumber(10, 300), // kg
-  height: positiveNumber(50, 250), // cm
-  // CDC features (must be "Yes" or "No")
+  age: numericField(1, 99),
+  weight: numericField(10, 300),
+  height: numericField(50, 250),
   high_bp: z.enum(["Yes", "No"]),
   high_chol: z.enum(["Yes", "No"]),
   smoker: z.enum(["Yes", "No"]),
@@ -67,7 +73,6 @@ const lifestyleDataSchema = z.object({
   physical_activity: z.enum(["Yes", "No"]),
   stroke: z.enum(["Yes", "No"]),
   heart_disease: z.enum(["Yes", "No"]),
-  // UCI symptoms
   polyuria: z.enum(["Yes", "No"]),
   polydipsia: z.enum(["Yes", "No"]),
   sudden_weight_loss: z.enum(["Yes", "No"]),
@@ -83,7 +88,7 @@ const lifestyleDataSchema = z.object({
   alopecia: z.enum(["Yes", "No"]),
 });
 
-// Per‑step schemas (for numeric fields)
+// Per‑step schemas (still expect number after coercion)
 const stepSchemas: Record<string, z.ZodSchema> = {
   age: positiveNumber(1, 99),
   weight: positiveNumber(10, 300),
@@ -377,7 +382,7 @@ export default function NonMedicalScreen() {
       return;
     }
 
-    // Final validation of all fields
+    // Final validation — schema now coerces strings to numbers automatically
     const validation = lifestyleDataSchema.safeParse(data);
     if (!validation.success) {
       const firstError = validation.error.issues[0];
